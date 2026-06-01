@@ -84,6 +84,88 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "synthetic biol":     ["synthetic biology"],
     "network":            ["systems biology", "bioinformatics"],
     "model":              ["systems biology"],
+
+    # ---- Immunology subterms ----
+    "tcr":                ["immunology"],
+    "t-cell receptor":    ["immunology"],
+    "antibody":           ["immunology"],
+    "immunoglobulin":     ["immunology"],
+    "mhc":                ["immunology"],
+    "hla":                ["immunology", "genetics"],
+    "complement":         ["immunology"],
+    "regulatory t cell":  ["immunology"],
+    "treg":               ["immunology"],
+    "dendritic cell":     ["immunology", "cell biology"],
+    "nk cell":            ["immunology"],
+    "natural killer":     ["immunology"],
+    "innate immun":       ["immunology"],
+    "adaptive immun":     ["immunology"],
+
+    # ---- Developmental biology ----
+    "organoid":           ["developmental biology", "cell biology"],
+    "gastruloid":         ["developmental biology"],
+    "somite":             ["developmental biology"],
+    "neural crest":       ["developmental biology", "neuroscience"],
+    "neural tube":        ["developmental biology"],
+    "embryo":             ["developmental biology"],
+    "morphogen":          ["developmental biology"],
+    "stem cell":          ["developmental biology", "cell biology"],
+    "ipsc":               ["developmental biology", "cell biology"],
+
+    # ---- Microscopy / imaging ----
+    "cryo-em":            ["biophysics", "biochemistry"],
+    "cryoem":             ["biophysics", "biochemistry"],
+    "cryo em":            ["biophysics", "biochemistry"],
+    "lattice light":      ["cell biology", "biophysics"],
+    "light-sheet":        ["cell biology", "biophysics"],
+    "expansion microsc":  ["cell biology", "biophysics"],
+    "super-resolution":   ["cell biology", "biophysics"],
+    "super resolution":   ["cell biology", "biophysics"],
+    "stochastic optical": ["cell biology", "biophysics"],
+    "single-molecule":    ["biophysics", "molecular biology"],
+
+    # ---- Multi-omics ----
+    "cite-seq":           ["genomics", "bioinformatics", "immunology"],
+    "perturb-seq":        ["genomics", "bioinformatics", "genetics"],
+    "mass cytometry":     ["immunology", "cell biology"],
+    "cytof":              ["immunology", "cell biology"],
+    "merfish":            ["genomics", "bioinformatics", "cell biology"],
+    "seqfish":            ["genomics", "bioinformatics", "cell biology"],
+    "slide-seq":          ["genomics", "bioinformatics"],
+    "visium":             ["genomics", "bioinformatics"],
+    "multi-omic":         ["bioinformatics", "systems biology"],
+    "multiome":           ["bioinformatics", "systems biology"],
+
+    # ---- Disease classes ----
+    "alzheimer":          ["neuroscience", "pathology"],
+    "parkinson":          ["neuroscience", "pathology"],
+    "als":                ["neuroscience", "pathology"],
+    "amyotrophic":        ["neuroscience", "pathology"],
+    "huntington":         ["neuroscience", "pathology"],
+    "ibd":                ["immunology", "pathology"],
+    "inflammatory bowel": ["immunology", "pathology"],
+    "multiple sclerosis": ["immunology", "neuroscience"],
+    "diabetes":           ["physiology", "pathology"],
+    "obesity":            ["physiology", "pathology"],
+    "cardiovascular":     ["physiology", "pathology"],
+    "fibrosis":           ["pathology", "cell biology"],
+    "lupus":              ["immunology", "pathology"],
+    "rheumatoid":         ["immunology", "pathology"],
+
+    # ---- Structural biology / prediction ----
+    "alphafold":          ["bioinformatics", "biophysics"],
+    "structure predict":  ["bioinformatics", "biophysics"],
+    "rosetta":            ["bioinformatics", "biophysics"],
+    "molecular dynamics": ["biophysics", "biochemistry"],
+    "x-ray crystal":      ["biophysics", "biochemistry"],
+    "nmr":                ["biophysics", "biochemistry"],
+}
+
+# Sanity guard: silently drop any non-bioRxiv categories that may have been
+# typed in above by accident. `BIORXIV_CATEGORIES` is the source of truth.
+_KEYWORD_TO_CAT = {
+    kw: [c for c in cats if c in BIORXIV_CATEGORIES]
+    for kw, cats in _KEYWORD_TO_CAT.items()
 }
 
 

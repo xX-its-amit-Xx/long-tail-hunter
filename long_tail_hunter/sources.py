@@ -142,6 +142,31 @@ def _paperclip_mcp(q: Query) -> dict[str, Any]:
     }
 
 
+_GENE_RE = __import__("re").compile(r"^[A-Z]+[A-Z0-9]*$")
+
+
+def _looks_like_gene(text: str) -> bool:
+    """Heuristic: does `text` look like a human gene symbol?
+
+    Rules:
+      * Length 3..7
+      * No whitespace
+      * Must match uppercase letters followed by optional letters/digits,
+        starting with at least one uppercase letter.
+
+    Examples that match: BRD4, BRCA1, TP53, KRAS, MTOR, ALK, MYC, EZH2.
+    Examples that DON'T match: lowercase, multi-word phrases, "BRCA1 VUS".
+    """
+    if not text or not isinstance(text, str):
+        return False
+    if " " in text or "\t" in text:
+        return False
+    n = len(text)
+    if n < 3 or n > 7:
+        return False
+    return bool(_GENE_RE.match(text))
+
+
 def _chembl_mcp(q: Query) -> dict[str, Any]:
     endpoint = q.params.get("endpoint", "target_search")
     tool_map = {
@@ -152,9 +177,21 @@ def _chembl_mcp(q: Query) -> dict[str, Any]:
         "drug_search":     "mcp__claude_ai_ChEMBL__drug_search",
         "get_admet":       "mcp__claude_ai_ChEMBL__get_admet",
     }
+    tool = tool_map.get(endpoint, "mcp__claude_ai_ChEMBL__target_search")
+    # target_search returns 200k-character payloads when called with `query=`
+    # on a broad term. Use gene_symbol= when the text looks like a gene
+    # symbol (much more selective), target_name= otherwise. Always cap with
+    # limit=10 so we don't spill to tool-result files.
+    if endpoint == "target_search":
+        if _looks_like_gene(q.text):
+            args: dict[str, Any] = {"gene_symbol": q.text, "limit": 10}
+        else:
+            args = {"target_name": q.text, "limit": 10}
+    else:
+        args = {"query": q.text, "limit": 10}
     return {
-        "tool": tool_map.get(endpoint, "mcp__claude_ai_ChEMBL__target_search"),
-        "args": {"query": q.text},
+        "tool": tool,
+        "args": args,
     }
 
 

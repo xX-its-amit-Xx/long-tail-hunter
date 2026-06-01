@@ -67,5 +67,44 @@
     "obscure_synonyms": ["chromatin accessibility batch correction", "co-embedding scATAC scRNA"],
     "adjacent_methods": ["Signac", "ArchR", "SnapATAC"],
     "rationale": "Three packages dominate; tools for niche analyses (e.g. peak-calling at low cell counts) live in the long tail."
+  },
+  {
+    "name": "phenotype-treatment-resistant-depression",
+    "term": "treatment-resistant depression",
+    "kind": "phenotype",
+    "synonyms": ["anhedonia", "TRD", "refractory depression"],
+    "obscure_synonyms": ["melancholic anhedonia", "reward processing deficit", "blunted hedonic response"],
+    "famous_hits": ["10.1056/NEJMoa1606627"],
+    "rationale": "Ketamine/esketamine trials dominate the recent literature; long-tail target is older mood-disorder phenomenology and reward-circuit work in non-human models."
+  },
+  {
+    "name": "phenotype-insulin-resistance-nafld",
+    "term": "insulin resistance in non-alcoholic fatty liver disease",
+    "kind": "phenotype",
+    "synonyms": ["NAFLD", "MASLD", "hepatic insulin resistance"],
+    "obscure_synonyms": ["DAG-PKC-epsilon axis", "hepatic diacylglycerol accumulation", "lipotoxicity-driven IR"],
+    "organism": "human",
+    "famous_hits": ["10.1056/NEJMra011775"],
+    "rationale": "MASLD rebrand and GLP-1 trials dominate; obscure synonyms route around to mechanistic lipotoxicity work and pre-2010 metabolic flux studies."
+  },
+  {
+    "name": "phenotype-neural-tube-closure",
+    "term": "neural tube closure defect",
+    "kind": "phenotype",
+    "synonyms": ["NTD", "anencephaly", "spina bifida"],
+    "obscure_synonyms": ["dorsolateral hinge point failure", "planar cell polarity defect", "convergent extension defect"],
+    "adjacent_methods": ["Vangl2 mutant", "Celsr1 mutant"],
+    "famous_hits": ["10.1056/NEJMra1004939"],
+    "rationale": "Folate epidemiology dominates the popular literature; developmental-biology long tail is in PCP-signaling mouse and chick work."
+  },
+  {
+    "name": "phenotype-friedreich-ataxia",
+    "term": "Friedreich ataxia",
+    "kind": "phenotype",
+    "synonyms": ["FRDA", "Friedreich's ataxia"],
+    "obscure_synonyms": ["frataxin deficiency", "GAA triplet repeat expansion", "mitochondrial iron-sulfur cluster deficit"],
+    "organism": "human",
+    "famous_hits": ["10.1126/science.271.5254.1423"],
+    "rationale": "Rare-disease space: omaveloxolone approval is the loud signal; long-tail value is in iron-sulfur biogenesis mechanism, cardiomyopathy progression, and gene-therapy preclinical work."
   }
 ]

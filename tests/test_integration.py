@@ -32,7 +32,14 @@ def _topic_from_case(case: dict) -> Topic:
 class TestEachCaseProducesValidPlan(unittest.TestCase):
     def test_all_cases(self):
         cases = _load_cases()
+        # Phenotype expansion (May 2026) added 4 new phenotype cases; the
+        # baseline of 5 still holds, but assert the new floor too.
         self.assertGreaterEqual(len(cases), 5)
+        self.assertGreaterEqual(len(cases), 11,
+                                "Expected the May 2026 phenotype expansion (>= 11 cases)")
+        phenotype_cases = [c for c in cases if c["kind"] == "phenotype"]
+        self.assertGreaterEqual(len(phenotype_cases), 5,
+                                "Expected >= 5 phenotype-kind cases after expansion")
         for case in cases:
             with self.subTest(name=case["name"]):
                 topic = _topic_from_case(case)
