@@ -3,78 +3,117 @@
 A scheduled remote agent picks one of these each week. Each item names a
 single coherent change with clear acceptance criteria.
 
-## 1. `famous_hits` suppression filter
+## 1. Cross-source result aggregator + dedupe
 
-`Topic.famous_hits` is accepted but never applied. Implement a filter that
-drops results whose DOI, repo URL, or title matches one of `famous_hits`,
-and apply it inside `runner.filter_biorxiv_results` *and* a new
-`filter_paperclip_results`. Update tests in `tests/test_runner.py` to cover.
-
-**Acceptance:**
-- New `filter_results(results, source, famous_hits)` helper in
-  `runner.py`.
-- Tests demonstrating a DOI in `famous_hits` causes the matching result to
-  be dropped; non-matches survive.
-- All existing 48 tests still pass.
-
-## 2. Expand `categories.py` keyword map
-
-Today's map has ~50 keywords. Add at least 30 more, particularly for:
-- Immunology subterms (TCR, antibody, MHC, complement, ...)
-- Developmental biology (organoid, gastruloid, somite, ...)
-- Microscopy / imaging (cryoEM, lattice-light-sheet, expansion microscopy)
-- Multi-omics (CITE-seq, Perturb-seq, mass cytometry, ...)
-- Disease classes (Alzheimer, Parkinson, ALS, IBD, ...)
+Each source returns results in its own shape (bioRxiv has `doi`/`title`/
+`abstract_preview`; paperclip returns excerpts; GitHub returns repo metadata;
+ChEMBL returns target rows). The runner currently has no notion of a
+unified result object, so downstream ranking and the new
+`score_long_tailness` heuristic only work per-source.
 
 **Acceptance:**
-- `_KEYWORD_TO_CAT` grows by ≥ 30 entries.
-- New unit tests show specific new keywords map to expected categories.
-- `test_falls_back_to_bioinformatics` still works for genuinely unknown
-  jargon.
+- New `runner.Result` dataclass with normalized fields: `source`, `id` (DOI
+  if biomed, repo full_name for GitHub, ChEMBL ID otherwise), `title`,
+  `url`, `date`, `abstract_preview`, `raw` (the original dict),
+  `strategies_matched: set[str]`.
+- New `runner.aggregate_results(raw_by_dispatch)` taking
+  `{Dispatch: list[dict]}` and returning `list[Result]` deduplicated by
+  normalized id (DOI preferred). Multi-source hits accumulate
+  `strategies_matched`.
+- Unit tests showing: (a) duplicate DOI across sources collapses to one
+  Result, (b) `strategies_matched` contains both strategy names, (c)
+  `score_long_tailness` consumed the diversity penalty correctly.
 
-## 3. ChEMBL gene-symbol routing
+## 2. OpenAlex source adapter
 
-`sources._chembl_mcp` currently passes `{"query": q.text}` for both endpoints.
-`target_search` works better with `gene_symbol=` when the term matches a
-gene pattern (uppercase letters + optional digits, 3–7 chars, e.g. `BRD4`,
-`BRCA1`, `TP53`).
-
-**Acceptance:**
-- New helper `_looks_like_gene(text: str) -> bool` in `sources.py`.
-- `_chembl_mcp` uses `gene_symbol=` for target_search when the helper
-  returns True; otherwise `target_name=`.
-- `limit` capped at 10 by default to avoid the 200k-character payload
-  problem (see issue notes in code).
-- Unit tests for both the gene-vs-non-gene routing and the limit cap.
-
-## 4. `score_long_tailness(result)` heuristic
-
-A small scorer the runner can use to rank results. Combine:
-- Recency (newer → higher; exponential decay, half-life ~6 months)
-- Source diversity (results found by multiple strategies → lower score —
-  they're the popular ones)
-- Niche-keyword density (presence of words like "limitations",
-  "non-model organism", "thesis", "Addgene" → higher score)
+OpenAlex (`api.openalex.org`) has a rich free-text search API (unlike
+bioRxiv) and indexes most biomed venues. It's a perfect long-tail source
+because the API exposes citation count — we deliberately sort by date,
+not citations.
 
 **Acceptance:**
-- `runner.score_long_tailness(result, meta) -> float` returning 0..1.
-- Higher score = more long-tail.
-- Unit tests with hand-crafted result dicts and expected ordering.
+- `sources._openalex_http(q)` and HTTP-only — no MCP adapter yet.
+- Query shape: `https://api.openalex.org/works?search=<term>&sort=publication_date:desc&per-page=25&filter=type:article`.
+- New strategy `openalex_recent(topic)` that emits OpenAlex queries
+  parallel to `recent_preprints` (one per obscure_synonym; falls back to
+  term).
+- Strategy registered in `ALL_STRATEGIES`.
+- Tests: `as_http` returns a dict with the right URL, the strategy
+  produces >= 1 query, and the integration test still passes.
 
-## 5. More test cases (especially phenotype-kind)
+## 3. GitHub recent-commits scraping (no GitHub MCP)
 
-`examples/test_cases.json` has only one phenotype case (cytokine storm).
-Add at least 4 more, spanning:
-- A psychiatric phenotype (e.g. anhedonia, treatment-resistant depression)
-- A metabolic phenotype (e.g. insulin resistance, NAFLD)
-- A developmental phenotype (e.g. neural tube closure defect)
-- A rare-disease phenotype
+The GitHub HTTP adapter today searches the `repositories` endpoint sorted
+by `updated`, but that returns repos sorted by last-commit-time which can
+be a README touch-up. The long-tail signal we actually want is *recent
+substantive commits* in repos that match a niche term.
 
-For each: term, kind, synonyms, obscure_synonyms, rationale. Update
-`tests/test_integration.py` to keep its ">= 5 cases" assertion honest.
+**Acceptance:**
+- `sources._github_commits_http(q)` hitting
+  `https://api.github.com/search/commits` with `q.text` and
+  `Accept: application/vnd.github.cloak-preview+json`.
+- New strategy `software_first_commits(topic)` that emits these queries
+  alongside the existing repo-search queries.
+- Tests covering: URL shape, sort=author-date, the strategy fires for
+  every synonym.
+
+## 4. Notion integration for logging found long-tail papers
+
+The user (researcher) wants to keep a Notion page of long-tail papers
+found per topic, with rationale. The Notion MCP is already connected.
+
+**Acceptance:**
+- New module `long_tail_hunter/notion_sink.py` with a single function
+  `log_result(notion_page_id: str, result: dict, topic: Topic, score: float)`
+  returning a dict describing the MCP call to make (we don't execute it
+  inside the Python package — the agent does).
+- The MCP call shape uses
+  `mcp__claude_ai_Notion__notion-update-page` with an `append` payload
+  containing a bullet: title (linked to URL), one-line rationale, score.
+- Unit test asserting the produced dict has the right tool name and
+  contains the result's title and DOI.
+
+## 5. Scoring heuristic tuning with a labeled corpus
+
+The current `score_long_tailness` heuristic is plausible but untuned.
+Build a small labeled corpus (10-20 known long-tail papers, 10-20 known
+popular papers from the same fields) and tune the three weights to
+maximize ranking AUC on this corpus.
+
+**Acceptance:**
+- `examples/scoring_corpus.json` with 20+ entries: each has the result
+  fields the scorer reads plus a `label` of `"long-tail"` or `"popular"`.
+- New CLI subcommand or script `scripts/tune_scoring.py` that grid-
+  searches the three weights (0.0..1.0 step 0.1) and prints the best
+  (weights, AUC).
+- Unit test that loads the corpus, runs `score_long_tailness` on every
+  row, and asserts the median long-tail score > median popular score.
 
 ## Out of scope for the weekly routine
 
-- GitHub MCP adapter (no GitHub MCP available yet).
-- Result aggregator + dedup across sources (needs design discussion).
-- Notion / Google Drive integration for tracking found papers (needs design).
+- Direct LLM-rerank of results (needs design discussion, model picking).
+- Full integration test against live MCP servers (flaky; need fixtures).
+
+## Shipped
+
+### 2026-05-31
+
+- `famous_hits` suppression filter — `runner.filter_results`,
+  `filter_paperclip_results`, integrated into `filter_biorxiv_results`,
+  with DOI exact and title-substring matching.
+- ChEMBL gene-symbol routing — `sources._looks_like_gene` plus
+  `_chembl_mcp` dispatch to `gene_symbol=` / `target_name=` with
+  `limit=10` capped on every endpoint.
+- Expanded `categories.py` keyword map — added 60+ entries covering
+  immunology subterms (TCR/MHC/Treg/dendritic cell), developmental
+  biology (organoid/gastruloid/somite/neural crest), microscopy
+  (cryo-EM/lattice-light-sheet/expansion microscopy), multi-omics
+  (CITE-seq/Perturb-seq/MERFISH/CyTOF), disease classes (Alzheimer/
+  Parkinson/ALS/IBD/MS), and structural biology (AlphaFold/Rosetta).
+- `score_long_tailness(result, meta)` heuristic — recency (0.4) +
+  source-diversity penalty (0.3) + niche-keyword density (0.3),
+  bounded to [0, 1].
+- Four new phenotype test cases — treatment-resistant depression,
+  insulin resistance / NAFLD, neural tube closure defect, Friedreich
+  ataxia. Integration test now asserts >= 11 cases and >= 5
+  phenotype cases.
