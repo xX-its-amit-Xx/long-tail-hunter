@@ -1,0 +1,71 @@
+[
+  {
+    "name": "method-crispr-screens",
+    "term": "CRISPR screen analysis",
+    "kind": "method",
+    "synonyms": ["pooled CRISPR screen", "genome-wide knockout screen"],
+    "obscure_synonyms": ["functional genomics screen", "guide RNA library screen"],
+    "adjacent_methods": ["MAGeCK", "BAGEL", "drugZ"],
+    "famous_hits": [
+      "10.1126/science.aad5227",
+      "10.1186/s13059-014-0554-4"
+    ],
+    "rationale": "Famous CRISPR-screen analysis tools (MAGeCK, BAGEL) dominate; long-tail target is recent tools and methodology critiques."
+  },
+  {
+    "name": "method-spatial-deconvolution",
+    "term": "spatial transcriptomics deconvolution",
+    "kind": "method",
+    "synonyms": ["cell-type deconvolution", "ST deconvolution"],
+    "obscure_synonyms": ["spot-level mixture decomposition", "spatial cell-type mapping"],
+    "adjacent_methods": ["cell2location", "RCTD", "SPOTlight", "stereoscope"],
+    "famous_hits": ["10.1038/s41587-021-01139-4"],
+    "rationale": "Field moves quickly; cell2location dominates citations but newer methods may be better — surface them."
+  },
+  {
+    "name": "target-brd4-vus",
+    "term": "BRD4",
+    "kind": "target",
+    "synonyms": ["bromodomain-containing protein 4"],
+    "obscure_synonyms": ["BET-family bromodomain"],
+    "organism": "human",
+    "famous_hits": ["10.1038/nature09504"],
+    "rationale": "BRD4 chemistry-of-the-target plus negative-space queries should surface understudied PROTAC degraders and clinical failures."
+  },
+  {
+    "name": "phenotype-cytokine-storm",
+    "term": "cytokine storm",
+    "kind": "phenotype",
+    "synonyms": ["cytokine release syndrome", "CRS"],
+    "obscure_synonyms": ["macrophage activation syndrome", "hyperinflammatory response"],
+    "famous_hits": ["10.1056/NEJMra2026131"],
+    "rationale": "COVID-era publications dominate; obscure synonyms reach hemophagocytic-lymphohistiocytosis literature and earlier sepsis work."
+  },
+  {
+    "name": "method-ribosome-profiling-drug-response",
+    "term": "ribosome profiling drug response",
+    "kind": "method",
+    "synonyms": ["Ribo-seq drug response"],
+    "obscure_synonyms": ["translatome perturbation profiling", "active mRNA footprinting"],
+    "adjacent_methods": ["Ribo-seq", "TI-seq", "DMS-seq"],
+    "rationale": "Cross-domain transfer is the value: applications in plant/yeast/microbial systems map back to mammalian therapeutic biology."
+  },
+  {
+    "name": "target-vus-brca1",
+    "term": "BRCA1 variants of uncertain significance",
+    "kind": "target",
+    "synonyms": ["BRCA1 VUS", "BRCA1 missense variants"],
+    "obscure_synonyms": ["BRCA1 saturation genome editing", "BRCA1 functional assay"],
+    "organism": "human",
+    "rationale": "Famous variants dominate the literature; saturation-mutagenesis and functional-assay studies are under-cited gold."
+  },
+  {
+    "name": "method-single-cell-atac-integration",
+    "term": "single-cell ATAC-seq integration",
+    "kind": "method",
+    "synonyms": ["scATAC integration", "multi-omic ATAC integration"],
+    "obscure_synonyms": ["chromatin accessibility batch correction", "co-embedding scATAC scRNA"],
+    "adjacent_methods": ["Signac", "ArchR", "SnapATAC"],
+    "rationale": "Three packages dominate; tools for niche analyses (e.g. peak-calling at low cell counts) live in the long tail."
+  }
+]
