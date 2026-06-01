@@ -359,5 +359,200 @@ class TestFamousHitsFilter(unittest.TestCase):
         self.assertEqual(filter_paperclip_results(rs, []), rs)
 
 
+class TestCategoryWordBoundary(unittest.TestCase):
+    """Regressions for the substring-false-positive bug found by the 2026-05-31
+    adversarial review: short acronyms like 'als' / 'ibd' / 'tcr' must not
+    fire inside unrelated longer words."""
+
+    def test_clinical_trials_does_not_match_als(self):
+        cats = categories_for(Topic(term="clinical trials review"))
+        self.assertNotIn("neuroscience", cats,
+                         "'als' inside 'trials' wrongly classified as ALS")
+
+    def test_protein_crystals_does_not_match_als(self):
+        cats = categories_for(Topic(term="protein crystals analysis"))
+        self.assertNotIn("neuroscience", cats)
+
+    def test_research_goals_does_not_match_als(self):
+        cats = categories_for(Topic(term="research goals in cancer"))
+        self.assertEqual(cats, ["cancer biology"],
+                         "'als' inside 'goals' leaked neuroscience/pathology")
+
+    def test_rabid_does_not_match_ibd(self):
+        # 'ibd' would substring-match 'rabid' under naive matching.
+        cats = categories_for(Topic(term="rabid bat surveillance"))
+        # Only 'bat' / no immunology-from-IBD should appear.
+        self.assertNotIn("immunology", cats)
+
+    def test_real_als_still_matches(self):
+        cats = categories_for(Topic(term="ALS motor neuron degeneration"))
+        self.assertIn("neuroscience", cats)
+        self.assertIn("pathology", cats)
+
+    def test_real_ibd_still_matches(self):
+        cats = categories_for(Topic(term="IBD microbiome composition"))
+        self.assertIn("immunology", cats)
+
+
+class TestPhenotypeRouting(unittest.TestCase):
+    """New phenotype cases must route to clinically appropriate categories,
+    not the bioinformatics fallback."""
+
+    def test_treatment_resistant_depression(self):
+        topic = Topic(term="treatment-resistant depression",
+                      synonyms=["TRD", "refractory depression"])
+        cats = categories_for(topic)
+        self.assertNotEqual(cats, ["bioinformatics"])
+        self.assertIn("neuroscience", cats)
+
+    def test_insulin_resistance_nafld(self):
+        topic = Topic(
+            term="insulin resistance in non-alcoholic fatty liver disease",
+            synonyms=["NAFLD", "MASLD"],
+        )
+        cats = categories_for(topic)
+        self.assertNotEqual(cats, ["bioinformatics"])
+        self.assertIn("physiology", cats)
+        self.assertIn("pathology", cats)
+
+    def test_friedreich_ataxia(self):
+        topic = Topic(term="Friedreich ataxia",
+                      obscure_synonyms=["frataxin deficiency"])
+        cats = categories_for(topic)
+        self.assertNotEqual(cats, ["bioinformatics"])
+        self.assertIn("neuroscience", cats)
+
+    def test_neural_tube_defect(self):
+        topic = Topic(term="neural tube closure defect")
+        cats = categories_for(topic)
+        self.assertIn("developmental biology", cats)
+
+
+class TestDOIURLNormalisation(unittest.TestCase):
+    """Regressions for DOI URL handling in filter_results — researchers paste
+    DOIs in many forms and all should suppress the same result."""
+
+    def _result(self, doi: str = "", title: str = ""):
+        return {"doi": doi, "title": title, "abstract_preview": ""}
+
+    def test_doi_url_form_suppresses_bare_doi_result(self):
+        rs = [self._result(doi="10.1126/science.aad5227", title="Famous paper")]
+        out = filter_results(rs, "biorxiv",
+                             ["https://doi.org/10.1126/science.aad5227"])
+        self.assertEqual(out, [],
+                         "DOI URL famous_hit failed to suppress bare-DOI result")
+
+    def test_bare_doi_form_suppresses_url_doi_result(self):
+        rs = [self._result(doi="https://doi.org/10.1126/science.aad5227",
+                           title="Famous paper")]
+        out = filter_results(rs, "biorxiv",
+                             ["10.1126/science.aad5227"])
+        self.assertEqual(out, [])
+
+    def test_doi_colon_prefix_normalised(self):
+        rs = [self._result(doi="10.1126/science.aad5227", title="Famous paper")]
+        out = filter_results(rs, "biorxiv",
+                             ["doi:10.1126/science.aad5227"])
+        self.assertEqual(out, [])
+
+    def test_dx_doi_org_prefix_normalised(self):
+        rs = [self._result(doi="10.1126/science.aad5227", title="Famous paper")]
+        out = filter_results(rs, "biorxiv",
+                             ["http://dx.doi.org/10.1126/science.aad5227"])
+        self.assertEqual(out, [])
+
+    def test_loose_doi_lookalike_falls_through_to_substring(self):
+        # '10.0 release' is NOT a valid DOI shape (no 4+ digits, no slash) —
+        # it should be treated as a title substring, not a DOI.
+        rs = [self._result(title="version 10.0 release notes")]
+        out = filter_results(rs, "biorxiv", ["10.0 release"])
+        self.assertEqual(out, [],
+                         "Loose '10.0 release' string should match as title substring")
+
+    def test_doi_url_does_not_match_unrelated_doi(self):
+        rs = [self._result(doi="10.1038/nature09504", title="Other paper")]
+        out = filter_results(rs, "biorxiv",
+                             ["https://doi.org/10.1126/science.aad5227"])
+        self.assertEqual(len(out), 1, "URL-form DOI matched wrong result")
+
+
+class TestGitHubFilterPath(unittest.TestCase):
+    """The source='github' branch in filter_results uses 'name' / 'full_name'
+    / 'repo' fields; previously uncovered by tests."""
+
+    def test_github_repo_name_substring_drops(self):
+        rs = [
+            {"name": "cell2location", "full_name": "BayraktarLab/cell2location"},
+            {"name": "NLSDeconv", "full_name": "ChenYun/NLSDeconv"},
+        ]
+        out = filter_results(rs, "github", ["cell2location"])
+        names = [r["name"] for r in out]
+        self.assertIn("NLSDeconv", names)
+        self.assertNotIn("cell2location", names)
+
+    def test_github_full_name_substring_drops(self):
+        rs = [{"name": "deconv-tool", "full_name": "BayraktarLab/cell2location"}]
+        out = filter_results(rs, "github", ["BayraktarLab/cell2location"])
+        self.assertEqual(out, [])
+
+
+class TestScoreLongTailnessRegressions(unittest.TestCase):
+    """Regressions for the niche-keyword substring and strategies_matched
+    type-handling bugs found by the 2026-05-31 adversarial review."""
+
+    def test_synthesis_does_not_trigger_thesis(self):
+        r = {"title": "A novel synthesis route for amino acids",
+             "abstract_preview": "We synthesised the compound..."}
+        score = score_long_tailness(r)
+        # Without word-boundary fix this would score ~0.679 due to 'thesis'.
+        # Word-boundary fix should keep it at ~ 0.4*0.3 + 0.3*0.85 + 0.0 ≈ 0.375.
+        self.assertLess(score, 0.5,
+                        f"'synthesis' wrongly triggered 'thesis' (score={score:.3f})")
+
+    def test_benchmarking_does_not_trigger_benchmark(self):
+        r = {"title": "Benchmarking pipelines for genomics",
+             "abstract_preview": "we benchmarked..."}
+        # 'benchmarking' contains 'benchmark' as substring; word boundary
+        # should NOT fire on it.
+        score = score_long_tailness(r)
+        # If 'benchmark' triggered, niche bumps by 0.08 → total higher.
+        no_kw_score = score_long_tailness({"title": "X", "abstract_preview": "Y"})
+        self.assertAlmostEqual(score, no_kw_score, places=2,
+                               msg="'benchmarking' wrongly triggered 'benchmark'")
+
+    def test_real_thesis_still_triggers(self):
+        r = {"title": "PhD thesis chapter", "abstract_preview": ""}
+        score = score_long_tailness(r)
+        bare = score_long_tailness({"title": "PhD work", "abstract_preview": ""})
+        self.assertGreater(score, bare,
+                           "Real 'thesis' word should still bump the score")
+
+    def test_strategies_matched_as_set(self):
+        r = {"title": "x", "abstract_preview": "y"}
+        # 3-element set: diversity should be 1 - 3*0.15 = 0.55 (not 0.85).
+        score_set = score_long_tailness(
+            r, {"strategies_matched": {"a", "b", "c"}}
+        )
+        score_int_3 = score_long_tailness(
+            r, {"strategies_matched": 3}
+        )
+        score_int_1 = score_long_tailness(
+            r, {"strategies_matched": 1}
+        )
+        self.assertAlmostEqual(score_set, score_int_3, places=6,
+                               msg="Set must collapse to len(), matching int=3")
+        self.assertLess(score_set, score_int_1,
+                        msg="3-strategy set must score lower than 1-strategy "
+                            "(diversity penalty inverted otherwise)")
+
+    def test_strategies_matched_as_list(self):
+        r = {"title": "x", "abstract_preview": "y"}
+        score_list = score_long_tailness(
+            r, {"strategies_matched": ["a", "b", "c", "d"]}
+        )
+        score_int_4 = score_long_tailness(r, {"strategies_matched": 4})
+        self.assertAlmostEqual(score_list, score_int_4, places=6)
+
+
 if __name__ == "__main__":
     unittest.main()

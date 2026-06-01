@@ -7,6 +7,7 @@ categories. Best-effort, keyword-based, deliberately conservative.
 The 27 official bioRxiv categories are listed in `BIORXIV_CATEGORIES`.
 """
 from __future__ import annotations
+import re
 from .topic import Topic
 
 BIORXIV_CATEGORIES = [
@@ -159,6 +160,27 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "molecular dynamics": ["biophysics", "biochemistry"],
     "x-ray crystal":      ["biophysics", "biochemistry"],
     "nmr":                ["biophysics", "biochemistry"],
+
+    # ---- Phenotype-shaped routing (gap caught by 2026-05-31 review) ----
+    "depress":            ["neuroscience", "pathology"],
+    "psychiat":           ["neuroscience", "pathology"],
+    "mood":               ["neuroscience"],
+    "anhedonia":          ["neuroscience", "pathology"],
+    "anxiety":            ["neuroscience", "pathology"],
+    "schizophren":        ["neuroscience", "pathology"],
+    "bipolar":            ["neuroscience", "pathology"],
+    "insulin resist":     ["physiology", "pathology"],
+    "nafld":              ["physiology", "pathology"],
+    "masld":              ["physiology", "pathology"],
+    "fatty liver":        ["physiology", "pathology"],
+    "hepatic":            ["physiology", "pathology"],
+    "ataxia":             ["neuroscience", "pathology"],
+    "friedreich":         ["neuroscience", "pathology"],
+    "frataxin":           ["biochemistry", "neuroscience"],
+    "iron-sulfur":        ["biochemistry"],
+    "rare disease":       ["pathology", "genetics"],
+    "neural tube defect": ["developmental biology", "pathology"],
+    "planar cell polar":  ["developmental biology", "cell biology"],
 }
 
 # Sanity guard: silently drop any non-bioRxiv categories that may have been
@@ -166,6 +188,18 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
 _KEYWORD_TO_CAT = {
     kw: [c for c in cats if c in BIORXIV_CATEGORIES]
     for kw, cats in _KEYWORD_TO_CAT.items()
+}
+
+# Leading-boundary-only matching: the keyword must START at a non-word
+# boundary, but may continue into a word (so stem-style keys like
+# "depress", "transcriptom", "neuro" still match "depression",
+# "transcriptomic", "neuroscience"). This avoids the substring-inside-word
+# false-positive trap where short acronyms like "als" matched "trials" or
+# "ibd" matched "rabidly", while preserving the prefix-stem usage that the
+# original substring matcher relied on.
+_KEYWORD_PATTERNS = {
+    kw: re.compile(r"(?<!\w)" + re.escape(kw), re.IGNORECASE)
+    for kw in _KEYWORD_TO_CAT
 }
 
 
@@ -177,10 +211,10 @@ def categories_for(topic: Topic) -> list[str]:
     long-tail-hunter is most often used for.
     """
     haystack = " ".join([topic.term, *topic.synonyms, *topic.obscure_synonyms,
-                         *topic.adjacent_methods]).lower()
+                         *topic.adjacent_methods])
     hits: set[str] = set()
     for kw, cats in _KEYWORD_TO_CAT.items():
-        if kw in haystack:
+        if _KEYWORD_PATTERNS[kw].search(haystack):
             hits.update(cats)
     if not hits:
         return ["bioinformatics"]

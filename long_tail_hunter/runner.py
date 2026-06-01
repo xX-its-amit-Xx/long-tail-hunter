@@ -16,9 +16,36 @@ from __future__ import annotations
 from typing import Any, Iterable
 from dataclasses import dataclass
 from datetime import date
+import re
 
 from .query import Query, SearchPlan
 from .sources import as_mcp
+
+
+_DOI_PREFIXES = (
+    "https://doi.org/",
+    "http://doi.org/",
+    "https://dx.doi.org/",
+    "http://dx.doi.org/",
+    "doi.org/",
+    "doi:",
+)
+# Tight DOI shape: 10. + 4-9 digits + slash. Rejects '10.0' / '10.x release'.
+_DOI_SHAPE_RE = re.compile(r"^10\.\d{4,9}/")
+
+
+def _norm_doi(s: str) -> str:
+    """Strip common DOI URL prefixes and lowercase, leaving a bare DOI."""
+    s = s.strip().lower()
+    for p in _DOI_PREFIXES:
+        if s.startswith(p):
+            s = s[len(p):]
+            break
+    return s
+
+
+def _looks_like_doi(s: str) -> bool:
+    return bool(_DOI_SHAPE_RE.match(_norm_doi(s)))
 
 
 @dataclass
@@ -143,9 +170,16 @@ def filter_results(
     hits = [h for h in famous_hits if h]
     if not hits:
         return list(results)
-    # Pre-split: DOIs vs. title/repo substrings.
-    dois_lc = {h.lower() for h in hits if h.lower().startswith("10.") or "/10." in h.lower()}
-    substrs_lc = [h.lower() for h in hits if h.lower() not in dois_lc]
+    # Pre-split: real DOIs vs. title/repo substrings. The DOI shape test
+    # is tight (10. + 4-9 digits + slash) and prefix-normalised so URL-form
+    # DOIs ('https://doi.org/10.x') match bare-DOI fields and vice versa.
+    dois_norm: set[str] = set()
+    substrs_lc: list[str] = []
+    for h in hits:
+        if _looks_like_doi(h):
+            dois_norm.add(_norm_doi(h))
+        else:
+            substrs_lc.append(h.lower())
 
     # Pick which title-ish field to match by source.
     if source == "github":
@@ -155,8 +189,8 @@ def filter_results(
 
     out = []
     for r in results:
-        doi_lc = (r.get("doi") or "").lower()
-        if doi_lc and doi_lc in dois_lc:
+        result_doi = _norm_doi(str(r.get("doi") or ""))
+        if result_doi and result_doi in dois_norm:
             continue
         title_blob_lc = " ".join(
             str(r.get(f, "")) for f in title_fields
@@ -171,6 +205,13 @@ _NICHE_KEYWORDS = (
     "limitations", "non-model", "thesis", "dissertation", "addgene",
     "rrid", "geo accession", "replication failed", "off-target",
     "contradicts", "edge case", "benchmark",
+)
+# Word-boundary patterns so "thesis" doesn't match "synthesis" /
+# "hypothesis" / "photosynthesis", "benchmark" doesn't match
+# "benchmarking", etc.
+_NICHE_PATTERNS = tuple(
+    re.compile(r"(?<!\w)" + re.escape(kw) + r"(?!\w)", re.IGNORECASE)
+    for kw in _NICHE_KEYWORDS
 )
 
 
@@ -207,21 +248,27 @@ def score_long_tailness(
         recency = 0.3
 
     # --- Source diversity penalty ---
-    matched = meta.get("strategies_matched", 1)
-    try:
-        matched = int(matched)
-    except (TypeError, ValueError):
-        matched = 1
+    matched_raw = meta.get("strategies_matched", 1)
+    if isinstance(matched_raw, (set, frozenset, list, tuple)):
+        matched = len(matched_raw)
+    elif isinstance(matched_raw, bool):
+        # bool is a subclass of int — treat as 1 (matched) / 0 (not).
+        matched = int(matched_raw)
+    else:
+        try:
+            matched = int(matched_raw)
+        except (TypeError, ValueError):
+            matched = 1
     diversity = max(0.0, 1.0 - matched * 0.15)
 
     # --- Niche-keyword density ---
     blob = " ".join([
         str(result.get("title", "")),
         str(result.get("abstract_preview", "")),
-    ]).lower()
+    ])
     niche_score = 0.0
-    for kw in _NICHE_KEYWORDS:
-        if kw in blob:
+    for pat in _NICHE_PATTERNS:
+        if pat.search(blob):
             niche_score += 0.08
     niche_score = min(1.0, niche_score)
 
