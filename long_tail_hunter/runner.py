@@ -247,7 +247,10 @@ def score_long_tailness(
     else:
         recency = 0.3
 
-    # --- Source diversity penalty ---
+    # --- Source diversity penalty (renamed: anti-popularity rarity score) ---
+    # Higher 'matched' = found by many strategies = more popular = lower
+    # score. Floor matched at 0 to keep the score sane against negative
+    # caller input.
     matched_raw = meta.get("strategies_matched", 1)
     if isinstance(matched_raw, (set, frozenset, list, tuple)):
         matched = len(matched_raw)
@@ -259,7 +262,9 @@ def score_long_tailness(
             matched = int(matched_raw)
         except (TypeError, ValueError):
             matched = 1
-    diversity = max(0.0, 1.0 - matched * 0.15)
+    matched = max(0, matched)
+    rarity = max(0.0, min(1.0, 1.0 - matched * 0.15))
+    diversity = rarity  # legacy local name, kept for the weighted-mean line
 
     # --- Niche-keyword density ---
     blob = " ".join([

@@ -34,12 +34,21 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "scrna-seq":          ["genomics", "bioinformatics", "cell biology"],
     "scatac":             ["genomics", "bioinformatics", "cell biology"],
     "atac-seq":           ["genomics", "bioinformatics"],
-    "spatial":            ["genomics", "bioinformatics", "cell biology"],
+    # 'spatial' alone misfires on 'spatial memory', 'spatial resolution'.
+    "spatial transcript": ["genomics", "bioinformatics", "cell biology"],
+    "spatial omics":      ["genomics", "bioinformatics", "cell biology"],
+    "spatial proteom":    ["genomics", "bioinformatics", "cell biology"],
+    "spatial genom":      ["genomics", "bioinformatics", "cell biology"],
     "transcriptom":       ["genomics", "bioinformatics"],
     "proteom":            ["biochemistry", "bioinformatics"],
     "metabolom":          ["biochemistry", "systems biology"],
     "deconvolution":      ["bioinformatics", "genomics"],
-    "integration":        ["bioinformatics", "systems biology"],
+    # 'integration' alone misfires on 'viral integration site' / 'social
+    # integration' — restrict to the omics contexts we actually mean.
+    "multi-omic integration": ["bioinformatics", "systems biology"],
+    "scatac integration": ["bioinformatics", "genomics"],
+    "data integration":   ["bioinformatics", "systems biology"],
+    "omics integration":  ["bioinformatics", "systems biology"],
     "ribosome profil":    ["molecular biology", "genomics"],
     "ribo-seq":           ["molecular biology", "genomics"],
 
@@ -57,10 +66,12 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "t cell":             ["immunology"],
     "b cell":             ["immunology"],
 
-    # neuro
-    "neuro":              ["neuroscience"],
+    # neuro — 'neur' is a stem that covers neuro*, neural*, neuron*.
+    "neur":               ["neuroscience"],
     "synap":              ["neuroscience", "cell biology"],
     "axon":               ["neuroscience", "cell biology"],
+    "glia":               ["neuroscience", "cell biology"],
+    "brain":              ["neuroscience"],
 
     # target/protein
     "brca1":              ["cancer biology", "genetics", "molecular biology"],
@@ -80,11 +91,14 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "fungi":              ["microbiology"],
     "yeast":              ["microbiology", "cell biology"],
 
-    # systems / synthetic
+    # systems / synthetic — bare 'network' and 'model' were too greedy.
     "systems biol":       ["systems biology"],
     "synthetic biol":     ["synthetic biology"],
-    "network":            ["systems biology", "bioinformatics"],
-    "model":              ["systems biology"],
+    "regulatory network": ["systems biology", "bioinformatics"],
+    "gene network":       ["systems biology", "bioinformatics"],
+    "metabolic network":  ["systems biology", "biochemistry"],
+    "boolean network":    ["systems biology", "bioinformatics"],
+    "model organism":     ["systems biology"],
 
     # ---- Immunology subterms ----
     "tcr":                ["immunology"],
@@ -219,7 +233,12 @@ _KEYWORD_TO_CAT: dict[str, list[str]] = {
     "toehold":            ["synthetic biology", "bioinformatics"],
     "riboregulator":      ["synthetic biology", "molecular biology"],
     "genetic circuit":    ["synthetic biology"],
-    "orthogonal":         ["synthetic biology", "biochemistry"],
+    # 'orthogonal' alone misfires (orthogonal axis, etc) — tighten to
+    # the synthetic-biology contexts that actually use it.
+    "orthogonal receptor":    ["synthetic biology", "biochemistry"],
+    "orthogonal translation": ["synthetic biology", "biochemistry"],
+    "orthogonal ribosom":     ["synthetic biology", "biochemistry"],
+    "orthogonal trna":        ["synthetic biology", "biochemistry"],
     "genetic code expansion": ["synthetic biology", "biochemistry"],
     "unnatural amino":    ["synthetic biology", "biochemistry"],
     "directed evolution": ["synthetic biology", "biochemistry"],

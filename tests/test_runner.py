@@ -496,6 +496,61 @@ class TestGitHubFilterPath(unittest.TestCase):
         self.assertEqual(out, [])
 
 
+class TestKeywordTightening(unittest.TestCase):
+    """Skeptic-pass findings: bare 'model', 'integration', 'spatial',
+    'network', 'orthogonal' false-fire on common biomedical phrasings.
+    These tests lock in the tightened keywords."""
+
+    def test_mouse_model_no_systems_biology(self):
+        cats = categories_for(Topic(term="mouse model of arthritis"))
+        # Should NOT carry 'systems biology' purely from the word 'model'.
+        # ('arthritis' is fine; if pathology shows up that's correct.)
+        self.assertNotIn("systems biology", cats,
+                         "Bare 'model' keyword leaked systems biology")
+
+    def test_viral_integration_no_bioinformatics_systems(self):
+        cats = categories_for(Topic(term="viral integration site mapping"))
+        # 'integration' shouldn't fire bioinformatics/systems-biology routing.
+        self.assertNotIn("systems biology", cats)
+        # Should still fall back to bioinformatics catch-all here since
+        # there's no other matching keyword. That's OK.
+        self.assertEqual(cats, ["bioinformatics"])
+
+    def test_spatial_memory_no_omics(self):
+        cats = categories_for(Topic(term="spatial memory in rodents"))
+        self.assertEqual(cats, ["bioinformatics"],
+                         "'spatial' fired omics on a memory/cognition phrase")
+
+    def test_social_network_no_systems_biology(self):
+        cats = categories_for(Topic(term="social network analysis"))
+        self.assertNotIn("systems biology", cats)
+
+    def test_orthogonal_axis_no_synbio(self):
+        cats = categories_for(Topic(term="orthogonal axis coordinate"))
+        self.assertNotIn("synthetic biology", cats)
+
+
+class TestNeuralStem(unittest.TestCase):
+    """Skeptic-pass finding: the old 'neuro' stem didn't match 'neural'.
+    Verify the 'neur' stem now picks up both."""
+
+    def test_neural_circuits_routes_neuroscience(self):
+        cats = categories_for(Topic(term="expansion microscopy for neural circuits"))
+        self.assertIn("neuroscience", cats)
+
+    def test_neuron_routes_neuroscience(self):
+        cats = categories_for(Topic(term="neuron pruning during development"))
+        self.assertIn("neuroscience", cats)
+
+    def test_neuro_still_works(self):
+        cats = categories_for(Topic(term="neuroinflammation in MS"))
+        self.assertIn("neuroscience", cats)
+
+    def test_brain_routes_neuroscience(self):
+        cats = categories_for(Topic(term="brain organoid imaging"))
+        self.assertIn("neuroscience", cats)
+
+
 class TestScoreLongTailnessRegressions(unittest.TestCase):
     """Regressions for the niche-keyword substring and strategies_matched
     type-handling bugs found by the 2026-05-31 adversarial review."""
@@ -552,6 +607,18 @@ class TestScoreLongTailnessRegressions(unittest.TestCase):
         )
         score_int_4 = score_long_tailness(r, {"strategies_matched": 4})
         self.assertAlmostEqual(score_list, score_int_4, places=6)
+
+    def test_negative_strategies_matched_clamped_to_zero(self):
+        r = {"title": "x", "abstract_preview": "y"}
+        # Skeptic-pass finding: negative matched would let the rarity term
+        # exceed 1.0, dominating the weighted mean even though the final
+        # value gets re-clamped. Verify behavior is identical to matched=0.
+        score_neg = score_long_tailness(r, {"strategies_matched": -5})
+        score_zero = score_long_tailness(r, {"strategies_matched": 0})
+        self.assertAlmostEqual(score_neg, score_zero, places=6)
+        # And bounded to [0, 1] regardless.
+        self.assertGreaterEqual(score_neg, 0.0)
+        self.assertLessEqual(score_neg, 1.0)
 
 
 if __name__ == "__main__":

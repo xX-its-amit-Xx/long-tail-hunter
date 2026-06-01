@@ -115,5 +115,42 @@ maximize ranking AUC on this corpus.
   bounded to [0, 1].
 - Four new phenotype test cases — treatment-resistant depression,
   insulin resistance / NAFLD, neural tube closure defect, Friedreich
-  ataxia. Integration test now asserts >= 11 cases and >= 5
-  phenotype cases.
+  ataxia.
+- **Late-May 2026 bulk expansion.** 4-agent parallel workflow added
+  20 more test cases spanning plant biology, microbiology,
+  evolutionary biology, ecology, developmental biology, synthetic
+  biology, and emerging methods (MERFISH, CITE-seq, IMC, expansion
+  microscopy, spatial ATAC, Slide-seq). Corpus is now 31 cases.
+  Integration test floors raised: >= 30 cases, >= 8 phenotype cases.
+  New test asserts ZERO cases route to the bioinformatics-only
+  fallback (`test_no_case_in_bioinformatics_fallback`).
+- **Adversarial-review-driven fixes.** Two rounds of fan-out review
+  surfaced and fixed:
+  - DOI URL normalisation in `filter_results` (so `https://doi.org/X`
+    suppresses bare-DOI `X` and vice versa) with tight shape check
+    `10.\d{4,9}/`.
+  - Word-boundary regex in `categories.py` so short acronyms (`als`,
+    `ibd`, `tcr`, `mhc`, `treg`) no longer match inside unrelated
+    words (`trials`, `crystals`, `goals`).
+  - Word-boundary regex in `score_long_tailness` niche-keyword
+    matching so `synthesis` no longer triggers `thesis` and
+    `benchmarking` no longer triggers `benchmark`.
+  - `strategies_matched` correctly handles set / frozenset / list /
+    tuple via `len()`, falls back to `int()`, and clamps negatives.
+  - Tightened over-broad keywords: bare `model`, `integration`,
+    `spatial`, `network`, `orthogonal` replaced with specific
+    phrases (`model organism`, `multi-omic integration`, `spatial
+    transcript`, `regulatory network`, `orthogonal translation`)
+    that don't false-fire on `mouse model of arthritis`, `viral
+    integration site`, `spatial memory`, `social network`, etc.
+  - `neuro` stem replaced with `neur` so `neural` / `neuron` /
+    `neuronal` now route to neuroscience. Added `brain`, `glia`.
+  - 50+ new domain keywords added: evolutionary biology /
+    population genetics / pop-gen / cryptic species / supergene /
+    mycorrhiza / SAR / persister / phage / toehold /
+    riboregulator / orthogonal translation / ancient DNA / eDNA /
+    metabarcoding / pangenome / depression / insulin resistance /
+    NAFLD / ataxia / Friedreich.
+  - Regression tests for every fix above (DOI URL, word boundaries,
+    set handling, negative-matched clamping, neural stem, keyword
+    tightening, phenotype routing). Final test count: 48 → 111.
