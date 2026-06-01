@@ -32,14 +32,24 @@ def _topic_from_case(case: dict) -> Topic:
 class TestEachCaseProducesValidPlan(unittest.TestCase):
     def test_all_cases(self):
         cases = _load_cases()
-        # Phenotype expansion (May 2026) added 4 new phenotype cases; the
-        # baseline of 5 still holds, but assert the new floor too.
+        # Bulk-expansion floors (May 2026 phenotype batch + late-May
+        # cross-domain batch). Each floor below catches a regression where
+        # someone deletes cases without replacing them.
         self.assertGreaterEqual(len(cases), 5)
         self.assertGreaterEqual(len(cases), 11,
                                 "Expected the May 2026 phenotype expansion (>= 11 cases)")
+        self.assertGreaterEqual(len(cases), 30,
+                                "Expected the late-May 2026 cross-domain expansion (>= 30 cases)")
         phenotype_cases = [c for c in cases if c["kind"] == "phenotype"]
         self.assertGreaterEqual(len(phenotype_cases), 5,
                                 "Expected >= 5 phenotype-kind cases after expansion")
+        self.assertGreaterEqual(len(phenotype_cases), 8,
+                                "Expected >= 8 phenotype-kind cases after late-May expansion")
+        # Every kind must have at least one case to keep the integration
+        # surface diverse.
+        kinds = {c["kind"] for c in cases}
+        for k in ("method", "target", "phenotype"):
+            self.assertIn(k, kinds, f"Missing case of kind '{k}'")
         for case in cases:
             with self.subTest(name=case["name"]):
                 topic = _topic_from_case(case)
@@ -81,6 +91,25 @@ class TestPlansAreDispatchable(unittest.TestCase):
                               if as_mcp(q) is None and as_http(q) is None]
                 self.assertEqual(unroutable, [],
                                  f"{case['name']}: undispatchable queries: {unroutable}")
+
+
+class TestEachCaseRoutesToRealCategory(unittest.TestCase):
+    """No case should fall through to the 'bioinformatics' fallback. If one
+    does, the category map needs another keyword (which is fine — but make
+    it explicit, don't paper it over with bioinformatics-catch-all)."""
+
+    def test_no_case_in_bioinformatics_fallback(self):
+        from long_tail_hunter.categories import categories_for
+        cases = _load_cases()
+        bad = []
+        for case in cases:
+            t = _topic_from_case(case)
+            cats = categories_for(t)
+            if cats == ["bioinformatics"]:
+                bad.append(case["name"])
+        self.assertEqual(bad, [],
+                         f"Cases routed to fallback only: {bad}. "
+                         "Add domain-appropriate keywords to categories.py.")
 
 
 if __name__ == "__main__":

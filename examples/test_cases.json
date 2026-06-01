@@ -3,9 +3,19 @@
     "name": "method-crispr-screens",
     "term": "CRISPR screen analysis",
     "kind": "method",
-    "synonyms": ["pooled CRISPR screen", "genome-wide knockout screen"],
-    "obscure_synonyms": ["functional genomics screen", "guide RNA library screen"],
-    "adjacent_methods": ["MAGeCK", "BAGEL", "drugZ"],
+    "synonyms": [
+      "pooled CRISPR screen",
+      "genome-wide knockout screen"
+    ],
+    "obscure_synonyms": [
+      "functional genomics screen",
+      "guide RNA library screen"
+    ],
+    "adjacent_methods": [
+      "MAGeCK",
+      "BAGEL",
+      "drugZ"
+    ],
     "famous_hits": [
       "10.1126/science.aad5227",
       "10.1186/s13059-014-0554-4"
@@ -16,46 +26,88 @@
     "name": "method-spatial-deconvolution",
     "term": "spatial transcriptomics deconvolution",
     "kind": "method",
-    "synonyms": ["cell-type deconvolution", "ST deconvolution"],
-    "obscure_synonyms": ["spot-level mixture decomposition", "spatial cell-type mapping"],
-    "adjacent_methods": ["cell2location", "RCTD", "SPOTlight", "stereoscope"],
-    "famous_hits": ["10.1038/s41587-021-01139-4"],
-    "rationale": "Field moves quickly; cell2location dominates citations but newer methods may be better — surface them."
+    "synonyms": [
+      "cell-type deconvolution",
+      "ST deconvolution"
+    ],
+    "obscure_synonyms": [
+      "spot-level mixture decomposition",
+      "spatial cell-type mapping"
+    ],
+    "adjacent_methods": [
+      "cell2location",
+      "RCTD",
+      "SPOTlight",
+      "stereoscope"
+    ],
+    "famous_hits": [
+      "10.1038/s41587-021-01139-4"
+    ],
+    "rationale": "Field moves quickly; cell2location dominates citations but newer methods may be better \u00e2\u20ac\u201d surface them."
   },
   {
     "name": "target-brd4-vus",
     "term": "BRD4",
     "kind": "target",
-    "synonyms": ["bromodomain-containing protein 4"],
-    "obscure_synonyms": ["BET-family bromodomain"],
+    "synonyms": [
+      "bromodomain-containing protein 4"
+    ],
+    "obscure_synonyms": [
+      "BET-family bromodomain"
+    ],
     "organism": "human",
-    "famous_hits": ["10.1038/nature09504"],
+    "famous_hits": [
+      "10.1038/nature09504"
+    ],
     "rationale": "BRD4 chemistry-of-the-target plus negative-space queries should surface understudied PROTAC degraders and clinical failures."
   },
   {
     "name": "phenotype-cytokine-storm",
     "term": "cytokine storm",
     "kind": "phenotype",
-    "synonyms": ["cytokine release syndrome", "CRS"],
-    "obscure_synonyms": ["macrophage activation syndrome", "hyperinflammatory response"],
-    "famous_hits": ["10.1056/NEJMra2026131"],
+    "synonyms": [
+      "cytokine release syndrome",
+      "CRS"
+    ],
+    "obscure_synonyms": [
+      "macrophage activation syndrome",
+      "hyperinflammatory response"
+    ],
+    "famous_hits": [
+      "10.1056/NEJMra2026131"
+    ],
     "rationale": "COVID-era publications dominate; obscure synonyms reach hemophagocytic-lymphohistiocytosis literature and earlier sepsis work."
   },
   {
     "name": "method-ribosome-profiling-drug-response",
     "term": "ribosome profiling drug response",
     "kind": "method",
-    "synonyms": ["Ribo-seq drug response"],
-    "obscure_synonyms": ["translatome perturbation profiling", "active mRNA footprinting"],
-    "adjacent_methods": ["Ribo-seq", "TI-seq", "DMS-seq"],
+    "synonyms": [
+      "Ribo-seq drug response"
+    ],
+    "obscure_synonyms": [
+      "translatome perturbation profiling",
+      "active mRNA footprinting"
+    ],
+    "adjacent_methods": [
+      "Ribo-seq",
+      "TI-seq",
+      "DMS-seq"
+    ],
     "rationale": "Cross-domain transfer is the value: applications in plant/yeast/microbial systems map back to mammalian therapeutic biology."
   },
   {
     "name": "target-vus-brca1",
     "term": "BRCA1 variants of uncertain significance",
     "kind": "target",
-    "synonyms": ["BRCA1 VUS", "BRCA1 missense variants"],
-    "obscure_synonyms": ["BRCA1 saturation genome editing", "BRCA1 functional assay"],
+    "synonyms": [
+      "BRCA1 VUS",
+      "BRCA1 missense variants"
+    ],
+    "obscure_synonyms": [
+      "BRCA1 saturation genome editing",
+      "BRCA1 functional assay"
+    ],
     "organism": "human",
     "rationale": "Famous variants dominate the literature; saturation-mutagenesis and functional-assay studies are under-cited gold."
   },
@@ -63,48 +115,625 @@
     "name": "method-single-cell-atac-integration",
     "term": "single-cell ATAC-seq integration",
     "kind": "method",
-    "synonyms": ["scATAC integration", "multi-omic ATAC integration"],
-    "obscure_synonyms": ["chromatin accessibility batch correction", "co-embedding scATAC scRNA"],
-    "adjacent_methods": ["Signac", "ArchR", "SnapATAC"],
+    "synonyms": [
+      "scATAC integration",
+      "multi-omic ATAC integration"
+    ],
+    "obscure_synonyms": [
+      "chromatin accessibility batch correction",
+      "co-embedding scATAC scRNA"
+    ],
+    "adjacent_methods": [
+      "Signac",
+      "ArchR",
+      "SnapATAC"
+    ],
     "rationale": "Three packages dominate; tools for niche analyses (e.g. peak-calling at low cell counts) live in the long tail."
   },
   {
     "name": "phenotype-treatment-resistant-depression",
     "term": "treatment-resistant depression",
     "kind": "phenotype",
-    "synonyms": ["anhedonia", "TRD", "refractory depression"],
-    "obscure_synonyms": ["melancholic anhedonia", "reward processing deficit", "blunted hedonic response"],
-    "famous_hits": ["10.1056/NEJMoa1606627"],
+    "synonyms": [
+      "anhedonia",
+      "TRD",
+      "refractory depression"
+    ],
+    "obscure_synonyms": [
+      "melancholic anhedonia",
+      "reward processing deficit",
+      "blunted hedonic response"
+    ],
+    "famous_hits": [
+      "10.1056/NEJMoa1606627"
+    ],
     "rationale": "Ketamine/esketamine trials dominate the recent literature; long-tail target is older mood-disorder phenomenology and reward-circuit work in non-human models."
   },
   {
     "name": "phenotype-insulin-resistance-nafld",
     "term": "insulin resistance in non-alcoholic fatty liver disease",
     "kind": "phenotype",
-    "synonyms": ["NAFLD", "MASLD", "hepatic insulin resistance"],
-    "obscure_synonyms": ["DAG-PKC-epsilon axis", "hepatic diacylglycerol accumulation", "lipotoxicity-driven IR"],
+    "synonyms": [
+      "NAFLD",
+      "MASLD",
+      "hepatic insulin resistance"
+    ],
+    "obscure_synonyms": [
+      "DAG-PKC-epsilon axis",
+      "hepatic diacylglycerol accumulation",
+      "lipotoxicity-driven IR"
+    ],
     "organism": "human",
-    "famous_hits": ["10.1056/NEJMra011775"],
+    "famous_hits": [
+      "10.1056/NEJMra011775"
+    ],
     "rationale": "MASLD rebrand and GLP-1 trials dominate; obscure synonyms route around to mechanistic lipotoxicity work and pre-2010 metabolic flux studies."
   },
   {
     "name": "phenotype-neural-tube-closure",
     "term": "neural tube closure defect",
     "kind": "phenotype",
-    "synonyms": ["NTD", "anencephaly", "spina bifida"],
-    "obscure_synonyms": ["dorsolateral hinge point failure", "planar cell polarity defect", "convergent extension defect"],
-    "adjacent_methods": ["Vangl2 mutant", "Celsr1 mutant"],
-    "famous_hits": ["10.1056/NEJMra1004939"],
+    "synonyms": [
+      "NTD",
+      "anencephaly",
+      "spina bifida"
+    ],
+    "obscure_synonyms": [
+      "dorsolateral hinge point failure",
+      "planar cell polarity defect",
+      "convergent extension defect"
+    ],
+    "adjacent_methods": [
+      "Vangl2 mutant",
+      "Celsr1 mutant"
+    ],
+    "famous_hits": [
+      "10.1056/NEJMra1004939"
+    ],
     "rationale": "Folate epidemiology dominates the popular literature; developmental-biology long tail is in PCP-signaling mouse and chick work."
   },
   {
     "name": "phenotype-friedreich-ataxia",
     "term": "Friedreich ataxia",
     "kind": "phenotype",
-    "synonyms": ["FRDA", "Friedreich's ataxia"],
-    "obscure_synonyms": ["frataxin deficiency", "GAA triplet repeat expansion", "mitochondrial iron-sulfur cluster deficit"],
+    "synonyms": [
+      "FRDA",
+      "Friedreich's ataxia"
+    ],
+    "obscure_synonyms": [
+      "frataxin deficiency",
+      "GAA triplet repeat expansion",
+      "mitochondrial iron-sulfur cluster deficit"
+    ],
     "organism": "human",
-    "famous_hits": ["10.1126/science.271.5254.1423"],
+    "famous_hits": [
+      "10.1126/science.271.5254.1423"
+    ],
     "rationale": "Rare-disease space: omaveloxolone approval is the loud signal; long-tail value is in iron-sulfur biogenesis mechanism, cardiomyopathy progression, and gene-therapy preclinical work."
+  },
+  {
+    "name": "phenotype-systemic-acquired-resistance",
+    "term": "systemic acquired resistance",
+    "kind": "phenotype",
+    "synonyms": [
+      "SAR",
+      "plant immune priming",
+      "broad-spectrum plant disease resistance",
+      "salicylic acid-mediated immunity"
+    ],
+    "obscure_synonyms": [
+      "pipecolic acid signaling",
+      "NHP-induced immunity",
+      "azelaic acid priming",
+      "G3P-mediated systemic signaling"
+    ],
+    "organism": "Arabidopsis thaliana",
+    "famous_hits": [
+      "10.1038/nature08854",
+      "10.1016/j.cell.2009.07.039",
+      "10.1126/science.1218867"
+    ],
+    "rationale": "Suppresses canonical NPR1 receptor / methyl salicylate mobile signal Nature/Science papers in favor of long-tail mechanistic work on N-hydroxypipecolic acid biosynthesis, glycerol-3-phosphate transport, and lipid transfer protein-mediated long-distance signaling."
+  },
+  {
+    "name": "method-root-microbiome-synthetic-communities",
+    "term": "synthetic root microbiome reconstitution",
+    "kind": "method",
+    "synonyms": [
+      "SynCom assembly",
+      "synthetic plant microbiome",
+      "gnotobiotic root colonization",
+      "defined bacterial community inoculation"
+    ],
+    "obscure_synonyms": [
+      "FlowPot system",
+      "core taxa drop-out experiments",
+      "reductionist phyllosphere microbiology",
+      "bottom-up community assembly in planta"
+    ],
+    "adjacent_methods": [
+      "16S amplicon sequencing",
+      "shotgun metagenomics",
+      "gnotobiotic boxes",
+      "fluorescence in situ hybridization"
+    ],
+    "organism": "Arabidopsis thaliana",
+    "famous_hits": [
+      "10.1038/nature11237",
+      "10.1038/nature16192",
+      "10.1016/j.chom.2017.07.004"
+    ],
+    "rationale": "Routes around the foundational Schlaepfer/Lundberg/Bulgarelli Nature root microbiome papers to surface niche work on drop-out community functional dissection, helper/keystone strain identification, and metabolic cross-feeding in defined SynComs."
+  },
+  {
+    "name": "target-nlr-immune-receptor-engineering",
+    "term": "NLR immune receptor engineering",
+    "kind": "target",
+    "synonyms": [
+      "plant NLR engineering",
+      "intracellular immune receptor design",
+      "R-gene stacking",
+      "decoy domain swap"
+    ],
+    "obscure_synonyms": [
+      "integrated domain NLRs",
+      "NLR helper-sensor pairs",
+      "ZAR1 resistosome mimicry",
+      "MADA motif engineering"
+    ],
+    "organism": "Solanum lycopersicum",
+    "famous_hits": [
+      "10.1126/science.aav5870",
+      "10.1126/science.aav5868",
+      "10.1038/s41586-019-1413-y"
+    ],
+    "rationale": "Suppresses the ZAR1 resistosome Science cryo-EM duo and AlphaFold-era structural work to surface the long-tail of integrated-decoy domain rewiring, MADA helper engineering, and synthetic LRR shuffling for novel effector recognition."
+  },
+  {
+    "name": "phenotype-bacterial-persister-cells",
+    "term": "bacterial persister cell formation",
+    "kind": "phenotype",
+    "synonyms": [
+      "antibiotic persistence",
+      "persister state",
+      "dormant antibiotic-tolerant cells",
+      "phenotypic antibiotic tolerance"
+    ],
+    "obscure_synonyms": [
+      "HipA-HipB toxin-antitoxin dormancy",
+      "(p)ppGpp-mediated growth arrest",
+      "type II TA-driven persistence",
+      "PolyP-Lon proteolysis axis"
+    ],
+    "organism": "Escherichia coli",
+    "famous_hits": [
+      "10.1126/science.1099390",
+      "10.1038/nature10069",
+      "10.1038/nrmicro2474"
+    ],
+    "rationale": "Routes around Balaban's foundational Science persister paper and Lewis's Nature toxin-antitoxin work to surface long-tail mechanistic literature on (p)ppGpp-polyphosphate-Lon axes, ribosome dimerization, and stochastic single-cell switching dynamics."
+  },
+  {
+    "name": "method-mycorrhizal-symbiosis-signaling",
+    "term": "arbuscular mycorrhizal symbiosis signaling",
+    "kind": "mixed",
+    "synonyms": [
+      "AM symbiosis",
+      "common symbiosis pathway",
+      "Myc factor signaling",
+      "strigolactone-mycorrhizal crosstalk"
+    ],
+    "obscure_synonyms": [
+      "CSSP cascade",
+      "DMI1/DMI2/DMI3 axis",
+      "lipochitooligosaccharide perception",
+      "calcium spiking decoding by CCaMK"
+    ],
+    "adjacent_methods": [
+      "laser capture microdissection of arbuscules",
+      "split-root systems",
+      "GCaMP nuclear calcium imaging",
+      "Rhizophagus irregularis monoxenic culture"
+    ],
+    "organism": "Medicago truncatula",
+    "famous_hits": [
+      "10.1038/nature09622",
+      "10.1038/nature03608",
+      "10.1126/science.1191132"
+    ],
+    "rationale": "Suppresses the canonical Myc-LCO Nature paper and strigolactone discovery Science papers to surface long-tail work on lipid transfer to fungal partners, RAM1/RAM2 transcriptional networks, and decoding of nuclear calcium spiking signatures by CCaMK."
+  },
+  {
+    "name": "phenotype-industrial-melanism",
+    "term": "industrial melanism",
+    "kind": "phenotype",
+    "synonyms": [
+      "peppered moth melanism",
+      "carbonaria morph",
+      "melanic polymorphism"
+    ],
+    "obscure_synonyms": [
+      "soot-darkening adaptation",
+      "cortex locus pigmentation shift",
+      "Biston betularia carbonaria allele"
+    ],
+    "organism": "Biston betularia",
+    "famous_hits": [
+      "10.1038/nature17951",
+      "10.1126/science.1126129"
+    ],
+    "rationale": "The 2016 Nature paper identifying the cortex transposon and Majerus's textbook-famous bird predation experiments dominate; the long tail is parallel melanism in other Lepidoptera and modern population-genomic resequencing of museum specimens."
+  },
+  {
+    "name": "method-pool-seq-fst-scan",
+    "term": "Pool-seq Fst scan",
+    "kind": "method",
+    "synonyms": [
+      "pooled sequencing selection scan",
+      "Pool-Seq genome scan",
+      "population pool sequencing"
+    ],
+    "obscure_synonyms": [
+      "allele frequency differentiation from bulks",
+      "Schloetterer pooled resequencing",
+      "PoPoolation2 differentiation test"
+    ],
+    "adjacent_methods": [
+      "PoPoolation2",
+      "poolfstat",
+      "BayPass"
+    ],
+    "famous_hits": [
+      "10.1038/nrg3803",
+      "10.1111/mec.12522"
+    ],
+    "rationale": "Schloetterer's Nature Reviews Genetics piece and the original PoPoolation papers dominate; the long tail is non-model wild populations (insects, fish stocks) where authors use idiosyncratic pipelines and rarely cite the rebranded method by name."
+  },
+  {
+    "name": "phenotype-cryptic-species-complex",
+    "term": "cryptic species complex",
+    "kind": "phenotype",
+    "synonyms": [
+      "cryptic species",
+      "sibling species complex",
+      "morphologically indistinguishable species"
+    ],
+    "obscure_synonyms": [
+      "pseudo-sibling lineages",
+      "isomorphic species pair",
+      "unrecognized species-level divergence"
+    ],
+    "famous_hits": [
+      "10.1016/j.tree.2006.11.004",
+      "10.1146/annurev.ecolsys.36.102403.135439"
+    ],
+    "rationale": "Bickford et al. TREE 2007 and Pfenninger & Schwenk are the canonical citations and overwhelm DNA-barcoding-era results; the long tail is recent integrative-taxonomy revisions in invertebrates, nematodes, and fungi where the species pair was never famous."
+  },
+  {
+    "name": "target-supergene-inversion",
+    "term": "supergene inversion",
+    "kind": "target",
+    "synonyms": [
+      "chromosomal inversion polymorphism",
+      "balanced inversion supergene",
+      "social supergene"
+    ],
+    "obscure_synonyms": [
+      "non-recombining haplotype block",
+      "Sb chromosome in Solenopsis",
+      "P/S morph locus in ruff"
+    ],
+    "famous_hits": [
+      "10.1038/nature11832",
+      "10.1038/ng.3434",
+      "10.1038/nature11833"
+    ],
+    "rationale": "The 2013/2016 Nature/Nat Genet papers on fire ant social chromosomes and ruff lekking morphs are the textbook hits; the long tail is mimicry-unrelated inversion supergenes in plants, snails, and seaweed flies that get cited far less."
+  },
+  {
+    "name": "method-resurrection-ecology",
+    "term": "resurrection ecology",
+    "kind": "method",
+    "synonyms": [
+      "dormant egg bank revival",
+      "Daphnia ephippia hatching",
+      "sediment-archived genotype revival"
+    ],
+    "obscure_synonyms": [
+      "diapause-bank time-series",
+      "ephippial archive resurrection",
+      "propagule-bank palaeogenetic assay"
+    ],
+    "adjacent_methods": [
+      "sediment core dating",
+      "common-garden experiment",
+      "whole-genome resequencing of revived clones"
+    ],
+    "organism": "Daphnia",
+    "famous_hits": [
+      "10.1146/annurev.ecolsys.39.110707.173506",
+      "10.1038/nature06291"
+    ],
+    "rationale": "Hairston's Annual Review and the Daphnia phosphorus-adaptation Nature paper dominate citations; the long tail is resurrection work on copepods, rotifers, and plant seed banks, plus newer epigenetic re-analyses that don't use the canonical phrase."
+  },
+  {
+    "name": "method-toehold-switch-design",
+    "term": "toehold switch riboregulator design",
+    "kind": "method",
+    "synonyms": [
+      "toehold switch sensor",
+      "RNA toehold riboregulator",
+      "de novo riboregulator design",
+      "synthetic RNA switch"
+    ],
+    "obscure_synonyms": [
+      "trans-acting RNA repressor with linear-linear interaction",
+      "kinetically trapped 5' UTR hairpin sensor",
+      "forward-engineered cis-repressed mRNA"
+    ],
+    "adjacent_methods": [
+      "NUPACK secondary structure design",
+      "cell-free TX-TL prototyping",
+      "paper-based diagnostic assay"
+    ],
+    "organism": "Escherichia coli",
+    "famous_hits": [
+      "10.1016/j.cell.2014.10.002",
+      "10.1016/j.cell.2016.04.059"
+    ],
+    "rationale": "Routes around the canonical Green/Collins 2014 Cell toehold paper and the 2016 Zika sensor Cell paper to surface long-tail work on thermodynamic design rules, orthogonality failures, and host-context effects in less-cited journals."
+  },
+  {
+    "name": "phenotype-symmetry-breaking-gastruloid",
+    "term": "symmetry breaking in mouse gastruloids",
+    "kind": "phenotype",
+    "synonyms": [
+      "gastruloid axis polarization",
+      "spontaneous AP axis formation in vitro",
+      "anterior-posterior symmetry breaking embryoid",
+      "self-organized polarization in ESC aggregates"
+    ],
+    "obscure_synonyms": [
+      "T/Brachyury pole emergence in 3D aggregates",
+      "stochastic Wnt focus formation in mESC clusters",
+      "embryonic organizer-like induction without extraembryonic tissue"
+    ],
+    "adjacent_methods": [
+      "pulsed Chiron exposure",
+      "live Brachyury-GFP imaging",
+      "micropattern confinement"
+    ],
+    "organism": "mouse",
+    "famous_hits": [
+      "10.1038/s41586-018-0578-0",
+      "10.1242/dev.113001"
+    ],
+    "rationale": "Routes around the van den Brink/Martinez-Arias 2018 Nature gastruloid paper to surface long-tail work on the biophysics and stochasticity of T pole emergence, including failures-of-symmetry-breaking and rare-state literature in Development and bioRxiv."
+  },
+  {
+    "name": "target-bmp-signaling-threshold",
+    "term": "BMP morphogen threshold interpretation",
+    "kind": "target",
+    "synonyms": [
+      "BMP gradient readout",
+      "Dpp activity gradient",
+      "pSMAD1/5/8 dose response",
+      "BMP positional information"
+    ],
+    "obscure_synonyms": [
+      "decapentaplegic spatial concentration code",
+      "Mad phosphorylation isocontours",
+      "ALK3/ALK6 receptor occupancy threshold"
+    ],
+    "adjacent_methods": [
+      "pSMAD immunostaining quantification",
+      "GFP-BMP4 FRAP",
+      "synthetic BMP traps"
+    ],
+    "organism": "Drosophila",
+    "famous_hits": [
+      "10.1038/nature06335",
+      "10.1016/j.cell.2007.05.026"
+    ],
+    "rationale": "Routes around the famous Gregor/Wieschaus Bicoid-style gradient interpretation papers and Affolter Dpp Cell reviews to surface long-tail mechanistic work on noise filtering, receptor saturation, and feedback in BMP signaling published in Development, eLife, and PLoS Biology."
+  },
+  {
+    "name": "method-orthogonal-translation-system",
+    "term": "orthogonal ribosome engineering",
+    "kind": "method",
+    "synonyms": [
+      "o-ribosome design",
+      "orthogonal translation system",
+      "engineered ribosome with altered specificity",
+      "Ribo-T tethered ribosome"
+    ],
+    "obscure_synonyms": [
+      "anti-Shine-Dalgarno mutant 30S subunit",
+      "decoupled translation apparatus",
+      "non-canonical amino acid incorporation chassis"
+    ],
+    "adjacent_methods": [
+      "genetic code expansion",
+      "pyrrolysyl-tRNA synthetase evolution",
+      "MAGE multiplex editing"
+    ],
+    "organism": "Escherichia coli",
+    "famous_hits": [
+      "10.1038/nature14862",
+      "10.1038/nchembio.1450"
+    ],
+    "rationale": "Routes around the Chin lab Nature 2015 Ribo-T paper and high-profile genetic code expansion Nature Chemical Biology hits to surface long-tail work on ribosome fitness costs, evolved 23S variants, and orthogonality leakage in less-cited microbiology venues."
+  },
+  {
+    "name": "phenotype-organoid-vascularization-failure",
+    "term": "vascularization failure in brain organoids",
+    "kind": "phenotype",
+    "synonyms": [
+      "lack of vasculature in cerebral organoids",
+      "necrotic core in organoid culture",
+      "diffusion-limited organoid growth",
+      "avascular organoid hypoxia"
+    ],
+    "obscure_synonyms": [
+      "HIF1a-driven central apoptosis in 3D neural culture",
+      "perfusion-deficient cortical spheroid maturation arrest",
+      "non-CD31 stromal void in iPSC-derived neuroepithelium"
+    ],
+    "adjacent_methods": [
+      "co-culture with HUVEC",
+      "ETV2-induced endothelial conversion",
+      "microfluidic perfusion chip"
+    ],
+    "organism": "human",
+    "famous_hits": [
+      "10.1038/nature12517",
+      "10.1038/s41592-019-0586-5"
+    ],
+    "rationale": "Routes around the Lancaster/Knoblich 2013 Nature cerebral organoid paper and the 2019 Nature Methods vascularized organoid headline to surface long-tail work on hypoxia signatures, core necrosis quantification, and partial-perfusion troubleshooting in Stem Cell Reports and bioRxiv."
+  },
+  {
+    "name": "method-slide-seq-tissue-mapping",
+    "term": "Slide-seq spatial transcriptomics",
+    "kind": "method",
+    "synonyms": [
+      "Slide-seqV2",
+      "bead-array spatial RNA-seq",
+      "high-resolution spatial transcriptomics",
+      "puck-based spatial profiling"
+    ],
+    "obscure_synonyms": [
+      "DNA-barcoded bead arrays for transcriptome capture",
+      "indexed bead spatial sequencing",
+      "Macosko bead pucks"
+    ],
+    "adjacent_methods": [
+      "Stereo-seq",
+      "HDST",
+      "Visium",
+      "DBiT-seq",
+      "Open-ST"
+    ],
+    "organism": "mouse",
+    "famous_hits": [
+      "10.1126/science.aaw1219",
+      "10.1038/s41587-020-0739-1"
+    ],
+    "rationale": "Rodriques 2019 Science and the 2020 NBT V2 paper dominate retrieval; the long tail is downstream application papers using Slide-seq in disease-specific tissue atlases (kidney injury, MS lesions, tumor microenvironments) and methodological extensions to chromatin/protein co-capture."
+  },
+  {
+    "name": "method-cite-seq-surface-proteome",
+    "term": "CITE-seq antibody-derived tag profiling",
+    "kind": "method",
+    "synonyms": [
+      "cellular indexing of transcriptomes and epitopes",
+      "ADT sequencing",
+      "single-cell surface proteomics",
+      "REAP-seq"
+    ],
+    "obscure_synonyms": [
+      "oligo-conjugated antibody scRNA-seq",
+      "barcoded antibody single-cell readout",
+      "epitope tag co-sequencing"
+    ],
+    "adjacent_methods": [
+      "TotalSeq",
+      "BioLegend hashing",
+      "ECCITE-seq",
+      "ASAP-seq",
+      "inCITE-seq"
+    ],
+    "famous_hits": [
+      "10.1038/nmeth.4380",
+      "10.1038/nbt.4179"
+    ],
+    "rationale": "Stoeckius 2017 Nature Methods and Mimitou 2019 ECCITE papers are saturated hits; the long-tail target is clinical CITE-seq cohort studies (lupus PBMC panels, CAR-T product characterization, tumor-infiltrating lymphocyte panels) and underexplored ADT normalization/batch-correction methods."
+  },
+  {
+    "name": "method-imc-tumor-microenvironment",
+    "term": "imaging mass cytometry of tumor microenvironment",
+    "kind": "method",
+    "synonyms": [
+      "IMC",
+      "Hyperion multiplexed imaging",
+      "metal-tagged antibody tissue imaging",
+      "multiplexed ion beam imaging adjacent"
+    ],
+    "obscure_synonyms": [
+      "laser-ablation CyTOF tissue mapping",
+      "lanthanide-conjugated antibody microscopy",
+      "TOF-SIMS antibody imaging"
+    ],
+    "adjacent_methods": [
+      "MIBI-TOF",
+      "CODEX",
+      "IBEX",
+      "mxIF",
+      "Vectra Polaris"
+    ],
+    "famous_hits": [
+      "10.1038/nmeth.2869",
+      "10.1016/j.cell.2020.03.052",
+      "10.1038/s41586-019-1876-x"
+    ],
+    "rationale": "Giesen 2014 NMeth (foundational IMC) and the Bodenmiller/Jackson 2020 Cell breast cancer atlas eclipse retrieval; the long tail is application papers in less-trafficked indications (pancreatic ductal adenocarcinoma stromal niches, IBD mucosal biopsies, transplant rejection panels) and computational pipelines (Steinbock, ImcSegmentationPipeline alternatives)."
+  },
+  {
+    "name": "method-expansion-microscopy-neural-circuits",
+    "term": "expansion microscopy for neural circuit reconstruction",
+    "kind": "method",
+    "synonyms": [
+      "ExM",
+      "expansion-assisted super-resolution",
+      "hydrogel-embedded tissue expansion",
+      "iterative expansion microscopy"
+    ],
+    "obscure_synonyms": [
+      "physical magnification of fixed specimens",
+      "swellable polyelectrolyte tissue clearing",
+      "isotropic specimen expansion"
+    ],
+    "adjacent_methods": [
+      "ExLLSM",
+      "MAP",
+      "ExSeq",
+      "U-ExM",
+      "TREx",
+      "pan-ExM"
+    ],
+    "famous_hits": [
+      "10.1126/science.1260088",
+      "10.1038/nmeth.3833",
+      "10.1126/science.aau8302"
+    ],
+    "rationale": "Chen/Boyden 2015 Science (original ExM) and the 2019 Science ExLLSM paper dominate; long-tail targets are protocol variants for hard tissues (bone, plant cell walls, pathogenic biofilms), quantitative validation studies of expansion isotropy, and applications outside the Boyden/Betzig labs in synaptic protein nanoscale organization."
+  },
+  {
+    "name": "method-spatial-atac-chromatin-mapping",
+    "term": "spatial ATAC-seq chromatin accessibility mapping",
+    "kind": "method",
+    "synonyms": [
+      "spatial-ATAC-seq",
+      "spatially resolved chromatin accessibility",
+      "spatial epigenomics",
+      "DBiT-ATAC"
+    ],
+    "obscure_synonyms": [
+      "microfluidic deterministic barcoding ATAC",
+      "in-situ Tn5 tagmentation arrays",
+      "tissue-section transposase profiling"
+    ],
+    "adjacent_methods": [
+      "MERFISH",
+      "Slide-tags",
+      "spatial-CUT&Tag",
+      "ATAC-RNA-seq",
+      "spatial CITE-seq"
+    ],
+    "organism": "mouse",
+    "famous_hits": [
+      "10.1038/s41586-022-05094-1",
+      "10.1038/s41586-022-05060-x"
+    ],
+    "rationale": "The Fan-lab Nature 2022 spatial-ATAC and spatial-CUT&Tag pair are the canonical hits; long-tail recall should surface emerging method variants (spatial multimodal omics in clinical FFPE, integration with histopathology, plant/non-mammalian applications) and computational tools for spatial peak calling beyond the original DBiT framework."
   }
 ]
