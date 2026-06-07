@@ -14,7 +14,7 @@ Two helpers also live here:
 """
 from __future__ import annotations
 from typing import Any, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 import re
 
@@ -297,3 +297,101 @@ def summarise_dispatches(dispatches: list[Dispatch]) -> dict[str, Any]:
         "queries_covered": total_origin,
         "by_tool": by_tool,
     }
+
+
+@dataclass
+class Result:
+    """A normalized, source-agnostic result from one or more dispatches.
+
+    `id` is the canonical dedup key: bare DOI for papers, GitHub full_name
+    for repos, ChEMBL ID for targets, or title-derived fallback.
+    `strategies_matched` grows as more dispatches surface the same item —
+    a high count signals a popular hit, which `score_long_tailness` penalises.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict[str, Any]
+    strategies_matched: set[str] = field(default_factory=set)
+
+
+def _normalize_result(
+    raw: dict[str, Any],
+    source: str,
+    strategies: set[str],
+) -> Result:
+    """Normalize one raw source dict into a Result with a canonical id."""
+    doi_raw = str(raw.get("doi") or "")
+    norm_doi = _norm_doi(doi_raw)
+    has_doi = bool(norm_doi) and _looks_like_doi(norm_doi)
+
+    if has_doi:
+        # DOI takes priority regardless of source — enables cross-source dedup.
+        rid = norm_doi
+        url = f"https://doi.org/{norm_doi}"
+    elif source == "github":
+        rid = str(raw.get("full_name") or raw.get("name") or "")
+        url = str(raw.get("html_url") or "")
+    elif source == "chembl":
+        rid = str(
+            raw.get("target_chembl_id") or
+            raw.get("molecule_chembl_id") or
+            raw.get("chembl_id") or
+            ""
+        )
+        url = (
+            f"https://www.ebi.ac.uk/chembl/target_report_card/{rid}/"
+            if rid else ""
+        )
+    else:
+        url_field = str(raw.get("url") or raw.get("link") or "")
+        title = str(raw.get("title") or raw.get("name") or "")
+        rid = url_field or title.lower().strip()[:100]
+        url = url_field
+
+    if not rid:
+        rid = f"_anon_{id(raw)}"
+
+    return Result(
+        source=source,
+        id=rid,
+        title=str(raw.get("title") or raw.get("name") or ""),
+        url=url,
+        date=str(
+            raw.get("date") or raw.get("updated_at") or raw.get("created_at") or ""
+        )[:10],
+        abstract_preview=str(raw.get("abstract_preview") or raw.get("description") or ""),
+        raw=raw,
+        strategies_matched=set(strategies),
+    )
+
+
+def aggregate_results(
+    raw_by_dispatch: list[tuple[Dispatch, list[dict[str, Any]]]],
+) -> list[Result]:
+    """Normalize and deduplicate results from multiple dispatches.
+
+    Each entry is a (Dispatch, list[raw_result_dict]) pair, conceptually
+    representing a ``{Dispatch: list[dict]}`` mapping. Results are deduplicated
+    by normalized id (DOI preferred for paper sources). Multi-source hits
+    accumulate ``strategies_matched`` — the count then feeds the diversity
+    penalty in ``score_long_tailness``.
+    """
+    by_id: dict[str, Result] = {}
+
+    for dispatch, raws in raw_by_dispatch:
+        source = dispatch.origin[0].source if dispatch.origin else "unknown"
+        strategy_names = {q.strategy for q in dispatch.origin}
+
+        for raw in raws:
+            r = _normalize_result(raw, source, strategy_names)
+            existing = by_id.get(r.id)
+            if existing is None:
+                by_id[r.id] = r
+            else:
+                existing.strategies_matched |= strategy_names
+
+    return list(by_id.values())
