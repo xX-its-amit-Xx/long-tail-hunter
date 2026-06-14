@@ -11,10 +11,12 @@ Two helpers also live here:
   * `filter_biorxiv_results(results, client_filter)` — applies the
     client-side keyword filter to a bioRxiv MCP response, since the MCP
     layer can't filter by text itself.
+  * `aggregate_results(raw_by_dispatch)` — normalises + deduplicates results
+    from multiple dispatches into a unified list of `Result` objects.
 """
 from __future__ import annotations
 from typing import Any, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 import re
 
@@ -62,6 +64,114 @@ class Dispatch:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
         return f"{self.tool} | sources={sources} | strategies={strategies}"
+
+
+@dataclass
+class Result:
+    """Normalised, deduplicated result from any source.
+
+    `id` is the canonical identifier: bare DOI for biomed sources (biorxiv,
+    paperclip), `full_name` for GitHub repos, ChEMBL ID otherwise.
+    `strategies_matched` accumulates across all dispatches that returned this
+    same result, so a large set signals a popular, widely-found item.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict[str, Any]
+    strategies_matched: set[str] = field(default_factory=set)
+
+
+_BIOMED_SOURCES = frozenset({"biorxiv", "paperclip"})
+
+
+def _extract_id(raw: dict[str, Any], source: str) -> str:
+    """Return a canonical dedup key for a raw result dict."""
+    if source in _BIOMED_SOURCES:
+        doi = str(raw.get("doi") or "").strip()
+        if doi:
+            norm = _norm_doi(doi)
+            if _looks_like_doi(norm):
+                return norm
+        title = str(raw.get("title") or "").strip().lower()
+        return f"title:{title[:120]}" if title else ""
+    if source == "github":
+        for f in ("full_name", "name", "repo"):
+            v = raw.get(f)
+            if v:
+                return str(v)
+        return ""
+    # ChEMBL and other sources
+    for f in ("molecule_chembl_id", "target_chembl_id", "chembl_id", "id"):
+        v = raw.get(f)
+        if v:
+            return str(v)
+    title = str(raw.get("title") or raw.get("pref_name") or "").strip().lower()
+    return f"title:{title[:120]}" if title else ""
+
+
+def _extract_url(raw: dict[str, Any], source: str, id_str: str) -> str:
+    """Construct or extract a URL for a result."""
+    if source in _BIOMED_SOURCES:
+        if id_str and not id_str.startswith("title:"):
+            return f"https://doi.org/{id_str}"
+        return str(raw.get("url") or "")
+    if source == "github":
+        url = raw.get("html_url") or raw.get("url") or ""
+        if not url and id_str and not id_str.startswith("title:"):
+            url = f"https://github.com/{id_str}"
+        return str(url)
+    return str(raw.get("url") or "")
+
+
+def aggregate_results(
+    raw_by_dispatch: "Iterable[tuple[Dispatch, list[dict[str, Any]]]]",
+) -> list[Result]:
+    """Normalise and deduplicate results across dispatches.
+
+    Takes an iterable of ``(Dispatch, raw_results_list)`` pairs — the shape
+    the agent produces after running MCP calls — and returns a flat list of
+    ``Result`` objects keyed by canonical id.  When the same id appears from
+    multiple dispatches the ``strategies_matched`` sets are unioned, letting
+    ``score_long_tailness`` apply the correct diversity penalty: items found
+    by many strategies are the popular ones.
+
+    Pass ``my_dict.items()`` if you built a ``{Dispatch: [...]}`` mapping.
+    """
+    by_id: dict[str, Result] = {}
+
+    for dispatch, raw_list in raw_by_dispatch:
+        source = dispatch.origin[0].source if dispatch.origin else "unknown"
+        dispatch_strategies = {q.strategy for q in dispatch.origin}
+
+        for raw in raw_list:
+            id_str = _extract_id(raw, source)
+            if not id_str:
+                continue
+
+            if id_str in by_id:
+                by_id[id_str].strategies_matched.update(dispatch_strategies)
+            else:
+                by_id[id_str] = Result(
+                    source=source,
+                    id=id_str,
+                    title=str(
+                        raw.get("title") or raw.get("pref_name")
+                        or raw.get("name") or ""
+                    ),
+                    url=_extract_url(raw, source, id_str),
+                    date=str(raw.get("date") or raw.get("date_revised") or ""),
+                    abstract_preview=str(
+                        raw.get("abstract_preview") or raw.get("abstract") or ""
+                    ),
+                    raw=raw,
+                    strategies_matched=set(dispatch_strategies),
+                )
+
+    return list(by_id.values())
 
 
 def build_dispatches(plan: SearchPlan) -> list[Dispatch]:
