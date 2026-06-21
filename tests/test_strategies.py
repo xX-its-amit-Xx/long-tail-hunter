@@ -145,6 +145,115 @@ class TestReagentAccession(unittest.TestCase):
         self.assertIn("rrid", kinds)
 
 
+class TestGithubCommitsHttp(unittest.TestCase):
+    """Tests for sources._github_commits_http and its routing via as_http."""
+
+    def _commit_query(self, text="niche spatial tool"):
+        from long_tail_hunter.query import Query
+        return Query(
+            source="github", text=text, rationale="test",
+            strategy="software_first_commits",
+            params={"endpoint": "commits", "sort": "author-date", "order": "desc"},
+        )
+
+    def test_url_hits_commits_endpoint(self):
+        from long_tail_hunter.sources import _github_commits_http
+        http = _github_commits_http(self._commit_query())
+        self.assertEqual(http["url"], "https://api.github.com/search/commits")
+
+    def test_sort_is_author_date(self):
+        from long_tail_hunter.sources import _github_commits_http
+        http = _github_commits_http(self._commit_query())
+        self.assertEqual(http["params"]["sort"], "author-date")
+
+    def test_accept_header_carries_cloak_preview(self):
+        from long_tail_hunter.sources import _github_commits_http
+        http = _github_commits_http(self._commit_query())
+        self.assertIn("cloak-preview", http["headers"]["Accept"])
+
+    def test_query_text_becomes_q_param(self):
+        from long_tail_hunter.sources import _github_commits_http
+        http = _github_commits_http(self._commit_query("ribosome profiling niche"))
+        self.assertEqual(http["params"]["q"], "ribosome profiling niche")
+
+    def test_as_http_routes_commits_endpoint(self):
+        """as_http must return the commits URL when endpoint='commits'."""
+        http = as_http(self._commit_query())
+        self.assertIsNotNone(http)
+        self.assertEqual(http["url"], "https://api.github.com/search/commits")
+
+    def test_as_http_repo_search_unaffected(self):
+        """as_http still returns the repositories URL when no endpoint override."""
+        from long_tail_hunter.query import Query
+        q = Query(
+            source="github", text="spatial", rationale="test",
+            strategy="software_first",
+            params={"sort": "updated", "order": "desc"},
+        )
+        http = as_http(q)
+        self.assertIsNotNone(http)
+        self.assertEqual(http["url"], "https://api.github.com/search/repositories")
+
+
+class TestSoftwareFirstCommits(unittest.TestCase):
+    """Tests for the software_first_commits strategy."""
+
+    def test_fires_once_per_obscure_synonym(self):
+        topic = Topic(
+            term="spatial transcriptomics",
+            obscure_synonyms=["in situ sequencing", "HDST"],
+        )
+        qs = S.software_first_commits(topic)
+        self.assertEqual(len(qs), 2, "Should emit one query per obscure synonym")
+
+    def test_fires_once_per_synonym_when_no_obscure(self):
+        topic = Topic(
+            term="CRISPR base editor",
+            synonyms=["CBE", "ABE"],
+        )
+        qs = S.software_first_commits(topic)
+        self.assertEqual(len(qs), 2, "Falls back to synonyms when no obscure_synonyms")
+        texts = [q.text for q in qs]
+        self.assertIn("CBE", texts)
+        self.assertIn("ABE", texts)
+
+    def test_falls_back_to_term_when_no_synonyms(self):
+        topic = Topic(term="ribosome profiling niche method")
+        qs = S.software_first_commits(topic)
+        self.assertEqual(len(qs), 1)
+        self.assertEqual(qs[0].text, "ribosome profiling niche method")
+
+    def test_all_queries_sort_by_author_date(self):
+        topic = Topic(
+            term="base editing", synonyms=["ABE", "CBE"], obscure_synonyms=["cytidine deaminase"]
+        )
+        qs = S.software_first_commits(topic)
+        for q in qs:
+            self.assertEqual(q.params.get("sort"), "author-date",
+                             "Commit strategy must sort by author-date, not stars/updated")
+
+    def test_no_query_sorts_by_stars(self):
+        topic = Topic(term="scanpy", synonyms=["scRNA-seq pipeline"])
+        qs = S.software_first_commits(topic)
+        for q in qs:
+            self.assertNotEqual(q.params.get("sort"), "stars")
+
+    def test_all_queries_use_github_source(self):
+        topic = Topic(term="niche tool", synonyms=["obscure lib"])
+        qs = S.software_first_commits(topic)
+        for q in qs:
+            self.assertEqual(q.source, "github")
+
+    def test_all_queries_carry_commits_endpoint_param(self):
+        topic = Topic(term="niche tool")
+        qs = S.software_first_commits(topic)
+        for q in qs:
+            self.assertEqual(q.params.get("endpoint"), "commits")
+
+    def test_registered_in_all_strategies(self):
+        self.assertIn("software_first_commits", S.ALL_STRATEGIES)
+
+
 class TestChemistrySide(unittest.TestCase):
     def test_emits_target_and_mechanism_for_target(self):
         topic = _t(kind=TopicKind.TARGET, term="BRD4")
