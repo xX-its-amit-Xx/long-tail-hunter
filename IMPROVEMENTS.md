@@ -41,22 +41,6 @@ not citations.
 - Tests: `as_http` returns a dict with the right URL, the strategy
   produces >= 1 query, and the integration test still passes.
 
-## 3. GitHub recent-commits scraping (no GitHub MCP)
-
-The GitHub HTTP adapter today searches the `repositories` endpoint sorted
-by `updated`, but that returns repos sorted by last-commit-time which can
-be a README touch-up. The long-tail signal we actually want is *recent
-substantive commits* in repos that match a niche term.
-
-**Acceptance:**
-- `sources._github_commits_http(q)` hitting
-  `https://api.github.com/search/commits` with `q.text` and
-  `Accept: application/vnd.github.cloak-preview+json`.
-- New strategy `software_first_commits(topic)` that emits these queries
-  alongside the existing repo-search queries.
-- Tests covering: URL shape, sort=author-date, the strategy fires for
-  every synonym.
-
 ## 4. Notion integration for logging found long-tail papers
 
 The user (researcher) wants to keep a Notion page of long-tail papers
@@ -95,6 +79,10 @@ maximize ranking AUC on this corpus.
 - Full integration test against live MCP servers (flaky; need fixtures).
 
 ## Shipped
+
+### 2026-06-21
+
+- 2026-06-21: GitHub recent-commits scraping (`sources._github_commits_http`, `strategies.software_first_commits`)
 
 ### 2026-05-31
 

@@ -38,7 +38,29 @@ def _biorxiv_http(q: Query) -> dict[str, Any]:
     }
 
 
+def _github_commits_http(q: Query) -> dict[str, Any]:
+    """Hit the GitHub commit-search endpoint, sorted by author date.
+
+    Accepts: application/vnd.github.cloak-preview+json is required by the
+    commit-search API (it was in preview as of 2021 and still needs the
+    header to avoid 422s in some API versions).
+    """
+    return {
+        "method": "GET",
+        "url": "https://api.github.com/search/commits",
+        "params": {
+            "q": q.text,
+            "sort": "author-date",
+            "order": "desc",
+            "per_page": 25,
+        },
+        "headers": {"Accept": "application/vnd.github.cloak-preview+json"},
+    }
+
+
 def _github_http(q: Query) -> dict[str, Any]:
+    if q.params.get("endpoint") == "commits":
+        return _github_commits_http(q)
     return {
         "method": "GET",
         "url": "https://api.github.com/search/repositories",

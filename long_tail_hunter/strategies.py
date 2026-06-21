@@ -311,6 +311,27 @@ def thesis_and_preprint_floor(topic: Topic) -> list[Query]:
     return out
 
 
+def software_first_commits(topic: Topic) -> list[Query]:
+    """Search GitHub commit messages for recent, substantive code activity.
+
+    The repository endpoint sorted by 'updated' can reflect a README
+    touch-up. Commit-level search sorted by author-date surfaces actual
+    code changes in repos that have not yet grown famous enough to show
+    up in popularity-ranked results.
+    """
+    out = []
+    for term in _synonyms_or_term(topic):
+        out.append(Query(
+            source="github",
+            text=term,
+            rationale="GitHub commit search (author-date) — finds niche code activity rather than repo-level update time or star count.",
+            strategy="software_first_commits",
+            params={"sort": "author-date", "order": "desc", "endpoint": "commits"},
+            tags=["software", "commits", "recent"],
+        ))
+    return out
+
+
 # Target/phenotype-specific: bring in chemistry-side data via ChEMBL.
 def chemistry_side(topic: Topic) -> list[Query]:
     """For targets/phenotypes: pull the chemical-biology angle.
@@ -347,6 +368,7 @@ ALL_STRATEGIES: dict[str, Strategy] = {
     "methodology_focus": methodology_focus,
     "negative_space": negative_space,
     "software_first": software_first,
+    "software_first_commits": software_first_commits,
     "niche_forums": niche_forums,
     "obscure_synonyms": obscure_synonyms,
     "cross_domain_transfer": cross_domain_transfer,
