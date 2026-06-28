@@ -340,6 +340,33 @@ def chemistry_side(topic: Topic) -> list[Query]:
     return out
 
 
+def openalex_recent(topic: Topic) -> list[Query]:
+    """OpenAlex articles sorted by publication date, not citations.
+
+    OpenAlex indexes most biomed venues and exposes citation count — we
+    deliberately ignore it and sort by `publication_date:desc` to surface
+    recent, uncited work that the citation-weighted popularity prior buries.
+
+    Emits one query per obscure synonym (the deepest long tail), falling
+    back to regular synonyms then term when none are available.
+    """
+    terms = _synonyms_or_term(topic)
+    out = []
+    for term in terms:
+        out.append(Query(
+            source="openalex",
+            text=term,
+            rationale=(
+                f"OpenAlex full-text search for '{term}' sorted by recent "
+                "publication date — citation count deliberately ignored."
+            ),
+            strategy="openalex_recent",
+            params={"sort": "publication_date:desc"},
+            tags=["recent", "openalex", "date-sorted"],
+        ))
+    return out
+
+
 # ---------- registry ----------
 
 ALL_STRATEGIES: dict[str, Strategy] = {
@@ -353,6 +380,7 @@ ALL_STRATEGIES: dict[str, Strategy] = {
     "reagent_and_accession": reagent_and_accession,
     "thesis_and_preprint_floor": thesis_and_preprint_floor,
     "chemistry_side": chemistry_side,
+    "openalex_recent": openalex_recent,
 }
 
 
