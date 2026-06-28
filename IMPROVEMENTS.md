@@ -96,6 +96,10 @@ maximize ranking AUC on this corpus.
 
 ## Shipped
 
+### 2026-06-28
+
+- 2026-06-28: OpenAlex source adapter (`sources._openalex_http`, strategy `openalex_recent`)
+
 ### 2026-05-31
 
 - `famous_hits` suppression filter — `runner.filter_results`,

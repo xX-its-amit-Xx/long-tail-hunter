@@ -92,6 +92,20 @@ def _stackoverflow_http(q: Query) -> dict[str, Any]:
     }
 
 
+def _openalex_http(q: Query) -> dict[str, Any]:
+    # Sort by date, not citations — citation count is deliberately ignored.
+    return {
+        "method": "GET",
+        "url": "https://api.openalex.org/works",
+        "params": {
+            "search": q.text,
+            "sort": "publication_date:desc",
+            "per-page": 25,
+            "filter": "type:article",
+        },
+    }
+
+
 HTTP_ADAPTERS = {
     "biorxiv": _biorxiv_http,
     "github": _github_http,
@@ -99,6 +113,7 @@ HTTP_ADAPTERS = {
     "biostars": _biostars_http,
     "bioc_support": _bioc_support_http,
     "stackoverflow": _stackoverflow_http,
+    "openalex": _openalex_http,
 }
 
 

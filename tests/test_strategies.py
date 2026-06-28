@@ -290,5 +290,111 @@ class TestAntiPopularityInvariants(unittest.TestCase):
                                 "Plan must hit multiple sources or it's not routing around any source's prior.")
 
 
+class TestOpenAlexHttp(unittest.TestCase):
+    """Tests for the _openalex_http adapter and its as_http routing."""
+
+    def _q(self, text="CRISPR screen"):
+        from long_tail_hunter.query import Query
+        return Query(
+            source="openalex", text=text, rationale="r",
+            strategy="openalex_recent",
+            params={"sort": "publication_date:desc"},
+        )
+
+    def test_as_http_returns_dict_not_none(self):
+        result = as_http(self._q())
+        self.assertIsNotNone(result, "as_http should return a dict for source='openalex'")
+
+    def test_url_is_openalex_works_endpoint(self):
+        result = as_http(self._q())
+        self.assertEqual(result["url"], "https://api.openalex.org/works")
+
+    def test_method_is_get(self):
+        result = as_http(self._q())
+        self.assertEqual(result["method"], "GET")
+
+    def test_search_param_equals_query_text(self):
+        result = as_http(self._q("frataxin deficiency"))
+        self.assertEqual(result["params"]["search"], "frataxin deficiency")
+
+    def test_sort_is_publication_date_desc(self):
+        result = as_http(self._q())
+        self.assertEqual(result["params"]["sort"], "publication_date:desc")
+
+    def test_per_page_is_25(self):
+        result = as_http(self._q())
+        self.assertEqual(result["params"]["per-page"], 25)
+
+    def test_filter_is_type_article(self):
+        result = as_http(self._q())
+        self.assertEqual(result["params"]["filter"], "type:article")
+
+
+class TestOpenAlexRecentStrategy(unittest.TestCase):
+    """Tests for the openalex_recent strategy."""
+
+    def test_produces_at_least_one_query(self):
+        qs = S.openalex_recent(_t())
+        self.assertGreater(len(qs), 0)
+
+    def test_source_is_openalex(self):
+        for q in S.openalex_recent(_t()):
+            self.assertEqual(q.source, "openalex")
+
+    def test_strategy_name_is_openalex_recent(self):
+        for q in S.openalex_recent(_t()):
+            self.assertEqual(q.strategy, "openalex_recent")
+
+    def test_recent_tag_present(self):
+        for q in S.openalex_recent(_t()):
+            self.assertIn("recent", q.tags)
+
+    def test_does_not_sort_by_citations_or_stars(self):
+        for q in S.openalex_recent(_t()):
+            self.assertNotIn("citations", str(q.params).lower())
+            self.assertNotIn("stars", str(q.params).lower())
+
+    def test_one_query_per_obscure_synonym(self):
+        topic = _t(obscure_synonyms=["frataxin deficiency", "GAA repeat expansion"])
+        qs = S.openalex_recent(topic)
+        self.assertEqual(len(qs), 2)
+        texts = [q.text for q in qs]
+        self.assertIn("frataxin deficiency", texts)
+        self.assertIn("GAA repeat expansion", texts)
+
+    def test_falls_back_to_synonyms_when_no_obscure(self):
+        topic = _t(synonyms=["base editing", "BE3"], obscure_synonyms=[])
+        qs = S.openalex_recent(topic)
+        texts = [q.text for q in qs]
+        self.assertIn("base editing", texts)
+        self.assertIn("BE3", texts)
+
+    def test_falls_back_to_term_when_no_synonyms(self):
+        topic = Topic(term="ribosome profiling", kind=TopicKind.METHOD)
+        qs = S.openalex_recent(topic)
+        self.assertEqual(len(qs), 1)
+        self.assertEqual(qs[0].text, "ribosome profiling")
+
+    def test_registered_in_all_strategies(self):
+        self.assertIn("openalex_recent", S.ALL_STRATEGIES)
+
+    def test_integration_plan_includes_openalex_queries(self):
+        sp = plan("CRISPR base editor")
+        openalex_qs = sp.by_source("openalex")
+        self.assertGreater(len(openalex_qs), 0,
+                           "plan() should include openalex_recent queries")
+
+    def test_integration_anti_popularity_invariants_still_pass(self):
+        sp = plan("scanpy")
+        # openalex queries must not sort by stars (they aren't github, so
+        # this is inherent, but verify the param is absent).
+        for q in sp.by_source("openalex"):
+            self.assertNotIn("stars", str(q.params).lower())
+        # The plan must still have recent-tagged queries.
+        recent = [q for q in sp.queries
+                  if "recent" in q.tags or q.params.get("sort") == "date_desc"]
+        self.assertGreater(len(recent), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
