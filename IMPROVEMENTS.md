@@ -57,22 +57,6 @@ substantive commits* in repos that match a niche term.
 - Tests covering: URL shape, sort=author-date, the strategy fires for
   every synonym.
 
-## 4. Notion integration for logging found long-tail papers
-
-The user (researcher) wants to keep a Notion page of long-tail papers
-found per topic, with rationale. The Notion MCP is already connected.
-
-**Acceptance:**
-- New module `long_tail_hunter/notion_sink.py` with a single function
-  `log_result(notion_page_id: str, result: dict, topic: Topic, score: float)`
-  returning a dict describing the MCP call to make (we don't execute it
-  inside the Python package — the agent does).
-- The MCP call shape uses
-  `mcp__claude_ai_Notion__notion-update-page` with an `append` payload
-  containing a bullet: title (linked to URL), one-line rationale, score.
-- Unit test asserting the produced dict has the right tool name and
-  contains the result's title and DOI.
-
 ## 5. Scoring heuristic tuning with a labeled corpus
 
 The current `score_long_tailness` heuristic is plausible but untuned.
@@ -95,6 +79,10 @@ maximize ranking AUC on this corpus.
 - Full integration test against live MCP servers (flaky; need fixtures).
 
 ## Shipped
+
+### 2026-07-05
+
+- 2026-07-05: Notion integration for logging found long-tail papers (`notion_sink.log_result`)
 
 ### 2026-05-31
 
