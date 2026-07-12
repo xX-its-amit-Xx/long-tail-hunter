@@ -73,28 +73,16 @@ found per topic, with rationale. The Notion MCP is already connected.
 - Unit test asserting the produced dict has the right tool name and
   contains the result's title and DOI.
 
-## 5. Scoring heuristic tuning with a labeled corpus
-
-The current `score_long_tailness` heuristic is plausible but untuned.
-Build a small labeled corpus (10-20 known long-tail papers, 10-20 known
-popular papers from the same fields) and tune the three weights to
-maximize ranking AUC on this corpus.
-
-**Acceptance:**
-- `examples/scoring_corpus.json` with 20+ entries: each has the result
-  fields the scorer reads plus a `label` of `"long-tail"` or `"popular"`.
-- New CLI subcommand or script `scripts/tune_scoring.py` that grid-
-  searches the three weights (0.0..1.0 step 0.1) and prints the best
-  (weights, AUC).
-- Unit test that loads the corpus, runs `score_long_tailness` on every
-  row, and asserts the median long-tail score > median popular score.
-
 ## Out of scope for the weekly routine
 
 - Direct LLM-rerank of results (needs design discussion, model picking).
 - Full integration test against live MCP servers (flaky; need fixtures).
 
 ## Shipped
+
+### 2026-07-12
+
+- Scoring heuristic tuning with a labeled corpus (`examples/scoring_corpus.json`, `scripts/tune_scoring.py`)
 
 ### 2026-05-31
 
