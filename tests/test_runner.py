@@ -621,5 +621,90 @@ class TestScoreLongTailnessRegressions(unittest.TestCase):
         self.assertLessEqual(score_neg, 1.0)
 
 
+class TestScoringCorpus(unittest.TestCase):
+    """Acceptance tests for IMPROVEMENTS.md item 5: scoring corpus."""
+
+    _CORPUS_PATH = None
+
+    @classmethod
+    def _load_corpus(cls):
+        import json
+        from pathlib import Path
+        if cls._CORPUS_PATH is None:
+            cls._CORPUS_PATH = (
+                Path(__file__).parent.parent / "examples" / "scoring_corpus.json"
+            )
+        return json.loads(cls._CORPUS_PATH.read_text())
+
+    def test_corpus_file_exists_and_is_valid_json(self):
+        corpus = self._load_corpus()
+        self.assertIsInstance(corpus, list)
+        self.assertGreater(len(corpus), 0)
+
+    def test_corpus_has_at_least_20_entries(self):
+        corpus = self._load_corpus()
+        self.assertGreaterEqual(len(corpus), 20,
+                                f"Expected 20+ entries, got {len(corpus)}")
+
+    def test_corpus_has_both_labels(self):
+        corpus = self._load_corpus()
+        labels = {e.get("label") for e in corpus}
+        self.assertIn("long-tail", labels)
+        self.assertIn("popular", labels)
+
+    def test_each_entry_has_required_scorer_fields(self):
+        corpus = self._load_corpus()
+        required = {"title", "abstract_preview", "date", "strategies_matched", "label"}
+        for i, entry in enumerate(corpus):
+            missing = required - entry.keys()
+            self.assertFalse(missing,
+                             f"Entry {i} missing fields: {missing}")
+
+    def test_median_long_tail_score_exceeds_median_popular_score(self):
+        """Core acceptance criterion: current weights correctly rank long-tail
+        above popular in aggregate across the labeled corpus."""
+        corpus = self._load_corpus()
+
+        def median(vals):
+            s = sorted(vals)
+            n = len(s)
+            mid = n // 2
+            return (s[mid - 1] + s[mid]) / 2.0 if n % 2 == 0 else s[mid]
+
+        lt_scores = [
+            score_long_tailness(
+                e,
+                meta={"strategies_matched": e.get("strategies_matched", 1)},
+            )
+            for e in corpus if e.get("label") == "long-tail"
+        ]
+        pop_scores = [
+            score_long_tailness(
+                e,
+                meta={"strategies_matched": e.get("strategies_matched", 1)},
+            )
+            for e in corpus if e.get("label") == "popular"
+        ]
+
+        self.assertGreater(len(lt_scores), 0, "No long-tail entries in corpus")
+        self.assertGreater(len(pop_scores), 0, "No popular entries in corpus")
+
+        med_lt = median(lt_scores)
+        med_pop = median(pop_scores)
+        self.assertGreater(
+            med_lt, med_pop,
+            f"Median long-tail ({med_lt:.3f}) must exceed median popular ({med_pop:.3f})",
+        )
+
+    def test_all_long_tail_scores_are_bounded(self):
+        corpus = self._load_corpus()
+        for e in corpus:
+            s = score_long_tailness(
+                e, meta={"strategies_matched": e.get("strategies_matched", 1)}
+            )
+            self.assertGreaterEqual(s, 0.0)
+            self.assertLessEqual(s, 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

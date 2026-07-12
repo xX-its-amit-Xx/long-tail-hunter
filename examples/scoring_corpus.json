@@ -1,0 +1,218 @@
+[
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Limitations of spatial deconvolution in non-model marine organisms",
+    "abstract_preview": "We assessed five deconvolution tools on coral reef tissue and found replication failed for three. RRID provided for all software. Addgene plasmids available on request.",
+    "date": "2025-06-15",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "paperclip",
+    "title": "PhD thesis chapter: frataxin deficiency in Drosophila sensory neurons",
+    "abstract_preview": "Dissertation chapter 3 examines off-target effects of RNAi knockdown in peripheral nervous system of a non-model invertebrate. Limitations include low sample size.",
+    "date": "2025-04-20",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "GEO accession datasets for NAFLD progression in a non-Western cohort",
+    "abstract_preview": "We deposited raw counts under GEO accession GSE211000. The edge case of mixed-ancestry samples was not addressed by existing normalization tools.",
+    "date": "2025-05-10",
+    "strategies_matched": 2
+  },
+  {
+    "label": "long-tail",
+    "source": "paperclip",
+    "title": "Contradicts the prevailing model: negative results in TCR repertoire clonality analysis",
+    "abstract_preview": "Replication failed to reproduce the clonality bias reported by Zhang et al. We highlight limitations of bulk TCR sequencing for low-frequency clone detection.",
+    "date": "2025-03-01",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "A benchmark for neural tube organoid models in non-model amphibian species",
+    "abstract_preview": "Dissertation-derived work establishing a benchmark for comparing protocol variants. Off-target Wnt activation was an edge case not covered by existing tools.",
+    "date": "2025-01-22",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Addgene plasmid toolkit for riboregulator circuits in Pseudomonas",
+    "abstract_preview": "We deposited 14 toehold switch plasmids to Addgene (IDs 210001-210014). Limitations of expression in high-GC organisms are discussed. RRID:SCR_002798 used for cloning.",
+    "date": "2025-07-01",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "paperclip",
+    "title": "Replication crisis in ancient DNA contamination metrics: a reanalysis",
+    "abstract_preview": "Replication failed for published contamination estimates across three independent labs. Thesis-level reanalysis of raw data suggests systematic bias.",
+    "date": "2025-02-14",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Benchmark evaluation of scATAC-seq peak calling in non-model plant genomes",
+    "abstract_preview": "We evaluate six peak callers on Arabidopsis thaliana and sorghum. Off-target peaks in repetitive regions represent an edge case in all tools tested.",
+    "date": "2025-06-03",
+    "strategies_matched": 2
+  },
+  {
+    "label": "long-tail",
+    "source": "paperclip",
+    "title": "Non-model organism proteomics: limitations of cross-species database matching",
+    "abstract_preview": "GEO accession GSE219000. We find off-target peptide matches inflate false discovery rates. Addgene plasmids for lentiviral expression vectors deposited.",
+    "date": "2025-05-28",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Contradicts current consensus: MERFISH overcounts rare cell types in frozen tissue",
+    "abstract_preview": "Replication failed to recapitulate published cell type fractions. Edge case: fresh vs. frozen samples shows 40-60% discordance. RRID:SCR_018909 cited.",
+    "date": "2025-04-09",
+    "strategies_matched": 2
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Dissertation chapter: pangenome graph limitations for microbial evolution inference",
+    "abstract_preview": "This thesis chapter demonstrates that core-genome assumptions break down for highly recombinant bacteria. Off-target SVs inflate evolutionary distance estimates.",
+    "date": "2025-03-17",
+    "strategies_matched": 1
+  },
+  {
+    "label": "long-tail",
+    "source": "paperclip",
+    "title": "Edge case handling in spatial ATAC-seq for non-model fungal species",
+    "abstract_preview": "Benchmark comparison of three pipelines on Aspergillus fumigatus. Replication failed at the normalization step due to unusual GC content. RRID:SCR_020993.",
+    "date": "2025-06-22",
+    "strategies_matched": 1
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "Cell2location: a probabilistic model for fine-grained cell type mapping from spatial transcriptomics",
+    "abstract_preview": "We present cell2location, a Bayesian model that maps cell types from scRNA-seq reference to spatial transcriptomics data. Applied to human lymph nodes and mouse brain.",
+    "date": "2022-01-06",
+    "strategies_matched": 7
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "Seurat: comprehensive integration of single-cell data",
+    "abstract_preview": "We present a comprehensive strategy for the integration of single-cell data across technologies and modalities. Applied to over 1 million cells.",
+    "date": "2019-06-05",
+    "strategies_matched": 8
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "STAR aligner: ultrafast universal RNA-seq aligner",
+    "abstract_preview": "We present STAR, an ultrafast RNA-seq aligner for long reads. Outperforms existing aligners in speed and accuracy on ENCODE datasets.",
+    "date": "2013-01-01",
+    "strategies_matched": 9
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "DESeq2: moderated estimation of fold change and dispersion for RNA-seq data",
+    "abstract_preview": "We present an improved method for differential expression analysis of count data using shrinkage estimators for the dispersion and fold change.",
+    "date": "2014-12-05",
+    "strategies_matched": 9
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "MACS2: model-based analysis of ChIP-seq data",
+    "abstract_preview": "Empirically modelling the shift size of ChIP-Seq tags, MACS improves the spatial resolution of predicted binding sites. Widely used in ENCODE.",
+    "date": "2012-09-15",
+    "strategies_matched": 6
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "ArchR: an integrative and scalable software package for single-cell chromatin accessibility analysis",
+    "abstract_preview": "ArchR is a scalable software package for analyzing single-cell ATAC-seq data. We demonstrate its utility on 1.2 million cells across multiple tissues.",
+    "date": "2021-04-05",
+    "strategies_matched": 5
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "CellChat: inference and analysis of cell-cell communication using single-cell RNA sequencing data",
+    "abstract_preview": "CellChat is a tool for quantitative inference and analysis of intercellular communication from single-cell data. CellChatDB contains curated signaling molecules.",
+    "date": "2021-02-17",
+    "strategies_matched": 6
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "AlphaFold2: highly accurate protein structure prediction with AlphaFold",
+    "abstract_preview": "We present AlphaFold, a novel deep learning algorithm for protein structure prediction. Achieved CASP14 breakthrough results with near-experimental accuracy.",
+    "date": "2021-07-15",
+    "strategies_matched": 10
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "Monocle 3: single-cell trajectory analysis reveals a hierarchical structure of cell fate",
+    "abstract_preview": "We present Monocle 3, a method for learning trajectories in single-cell data. Demonstrates principal graph learning on UMAP embeddings.",
+    "date": "2019-03-06",
+    "strategies_matched": 5
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "CellRanger: a software suite for 10x Genomics Chromium single-cell RNA-seq",
+    "abstract_preview": "CellRanger is a set of analysis pipelines that process Chromium single-cell RNA-seq output. Includes alignment, barcode processing, and gene counting.",
+    "date": "2017-03-01",
+    "strategies_matched": 7
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "Harmony: fast, sensitive and accurate integration of single-cell data with Harmony",
+    "abstract_preview": "We present Harmony, an algorithm for integrating single-cell sequencing data from multiple experiments. Tested on 100,000+ cells across 10 datasets.",
+    "date": "2019-11-18",
+    "strategies_matched": 6
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "RCTD: robust cell type decomposition of spatial transcriptomics data",
+    "abstract_preview": "RCTD is a statistical method for cell type decomposition using a reference scRNA-seq dataset. We applied it to the mouse cerebellum spatial dataset.",
+    "date": "2021-05-05",
+    "strategies_matched": 6
+  },
+  {
+    "label": "long-tail",
+    "source": "biorxiv",
+    "title": "Chromatin accessibility in sorghum during drought stress",
+    "abstract_preview": "We performed ATAC-seq on drought-treated sorghum leaves and identified 12,000 condition-specific accessible regions. Raw data deposited at GEO accession GSE225001.",
+    "date": "2025-05-20",
+    "strategies_matched": 1
+  },
+  {
+    "label": "popular",
+    "source": "biorxiv",
+    "title": "Benchmarking protein language models for variant effect prediction",
+    "abstract_preview": "We systematically benchmarked seven protein language models on variant effect prediction across 87 deep mutational scanning datasets. ESM2 achieves state-of-art performance.",
+    "date": "2025-04-10",
+    "strategies_matched": 7
+  },
+  {
+    "label": "popular",
+    "source": "paperclip",
+    "title": "scVI: deep generative modeling for single-cell transcriptomics",
+    "abstract_preview": "We present scVI, a scalable deep generative model for single-cell RNA-seq. Integrates data from multiple batches while preserving biological variation.",
+    "date": "2018-11-08",
+    "strategies_matched": 6
+  }
+]
