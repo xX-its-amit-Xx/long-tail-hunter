@@ -7,6 +7,7 @@ from long_tail_hunter.hunter import plan
 from long_tail_hunter.runner import (
     build_dispatches, filter_biorxiv_results, filter_paperclip_results,
     filter_results, score_long_tailness, summarise_dispatches,
+    Result, aggregate_results,
 )
 from long_tail_hunter.categories import categories_for, BIORXIV_CATEGORIES
 
@@ -619,6 +620,151 @@ class TestScoreLongTailnessRegressions(unittest.TestCase):
         # And bounded to [0, 1] regardless.
         self.assertGreaterEqual(score_neg, 0.0)
         self.assertLessEqual(score_neg, 1.0)
+
+
+class TestAggregateResults(unittest.TestCase):
+    """Tests for runner.Result dataclass and runner.aggregate_results."""
+
+    # ------ helpers ------
+
+    def _dispatch(self, tool, source, strategies):
+        from long_tail_hunter.query import Query
+        from long_tail_hunter.runner import Dispatch
+        origin = [
+            Query(source=source, text="x", rationale="test", strategy=s, params={})
+            for s in strategies
+        ]
+        return Dispatch(tool=tool, args={}, origin=origin)
+
+    def _biorxiv(self, strategies=("recent_preprints",)):
+        return self._dispatch(
+            "mcp__claude_ai_bioRxiv__search_preprints", "biorxiv", strategies
+        )
+
+    def _paperclip(self, strategies=("methodology_focus",)):
+        return self._dispatch(
+            "mcp__claude_ai_Paperclip_for_literature_search__paperclip",
+            "paperclip", strategies,
+        )
+
+    def _github(self, strategies=("software_first",)):
+        return self._dispatch(
+            "mcp__github__search_repositories", "github", strategies
+        )
+
+    # ------ Result dataclass ------
+
+    def test_result_has_required_fields(self):
+        r = Result(
+            source="biorxiv", id="10.1234/test", title="Paper",
+            url="https://doi.org/10.1234/test", date="2024-01-01",
+            abstract_preview="An abstract.", raw={},
+        )
+        self.assertEqual(r.source, "biorxiv")
+        self.assertEqual(r.id, "10.1234/test")
+        self.assertIsInstance(r.strategies_matched, set)
+        self.assertEqual(r.strategies_matched, set())
+
+    def test_result_strategies_matched_default_is_empty_set(self):
+        r = Result(source="x", id="y", title="", url="", date="", abstract_preview="", raw={})
+        self.assertEqual(r.strategies_matched, set())
+        # Two instances share no mutable state
+        r2 = Result(source="x", id="z", title="", url="", date="", abstract_preview="", raw={})
+        r.strategies_matched.add("foo")
+        self.assertNotIn("foo", r2.strategies_matched)
+
+    # ------ deduplication ------
+
+    def test_duplicate_doi_collapses_to_one_result(self):
+        doi = "10.1234/duptest.001"
+        raw = {"doi": doi, "title": "A paper", "date": "2024-01-15",
+               "abstract_preview": ""}
+        results = aggregate_results([(self._biorxiv(), [raw]), (self._paperclip(), [raw])])
+        doi_hits = [r for r in results if r.id == doi]
+        self.assertEqual(len(doi_hits), 1,
+                         f"Duplicate DOI must collapse to one Result; got {len(doi_hits)}")
+
+    def test_doi_url_prefix_stripped_for_id(self):
+        raw = {"doi": "https://doi.org/10.1234/url.001", "title": "Paper",
+               "date": "2024-01-01"}
+        results = aggregate_results([(self._biorxiv(), [raw])])
+        self.assertEqual(results[0].id, "10.1234/url.001")
+        self.assertEqual(results[0].url, "https://doi.org/10.1234/url.001")
+
+    def test_distinct_dois_kept_separate(self):
+        d = self._biorxiv()
+        results = aggregate_results([(d, [
+            {"doi": "10.1234/a", "title": "Paper A", "date": ""},
+            {"doi": "10.1234/b", "title": "Paper B", "date": ""},
+        ])])
+        self.assertEqual(len(results), 2)
+
+    def test_empty_input_returns_empty_list(self):
+        self.assertEqual(aggregate_results([]), [])
+
+    def test_dispatch_with_no_results_returns_empty(self):
+        self.assertEqual(aggregate_results([(self._biorxiv(), [])]), [])
+
+    # ------ strategies_matched accumulation ------
+
+    def test_strategies_matched_accumulated_across_dispatches(self):
+        doi = "10.1234/multistr.001"
+        raw = {"doi": doi, "title": "Paper", "date": ""}
+        d1 = self._biorxiv(("recent_preprints",))
+        d2 = self._paperclip(("methodology_focus",))
+        results = aggregate_results([(d1, [raw]), (d2, [raw])])
+        r = next(x for x in results if x.id == doi)
+        self.assertIn("recent_preprints", r.strategies_matched)
+        self.assertIn("methodology_focus", r.strategies_matched)
+
+    def test_strategies_matched_single_dispatch_multi_strategy(self):
+        d = self._biorxiv(("recent_preprints", "negative_space"))
+        raw = {"doi": "10.1234/single.001", "title": "Paper", "date": ""}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(results[0].strategies_matched,
+                         {"recent_preprints", "negative_space"})
+
+    # ------ score_long_tailness diversity penalty ------
+
+    def test_score_long_tailness_diversity_penalty_via_result(self):
+        doi = "10.1234/score.001"
+        raw = {"doi": doi, "title": "Paper", "date": "2024-01-01",
+               "abstract_preview": ""}
+        many = ("recent_preprints", "negative_space", "methodology_focus",
+                "obscure_synonyms", "cross_domain_transfer")
+        results_many = aggregate_results([(self._biorxiv(many), [raw])])
+        results_one = aggregate_results([(self._biorxiv(("recent_preprints",)), [raw])])
+        r_many, r_one = results_many[0], results_one[0]
+        score_many = score_long_tailness(
+            r_many.raw, meta={"strategies_matched": r_many.strategies_matched}
+        )
+        score_one = score_long_tailness(
+            r_one.raw, meta={"strategies_matched": r_one.strategies_matched}
+        )
+        self.assertLess(score_many, score_one,
+                        "More strategies_matched should lower the long-tail score")
+
+    # ------ source normalization ------
+
+    def test_github_result_uses_full_name_as_id(self):
+        raw = {"full_name": "owner/awesome-tool", "name": "awesome-tool",
+               "html_url": "https://github.com/owner/awesome-tool",
+               "description": "A cool tool", "updated_at": "2024-03-01T00:00:00Z"}
+        results = aggregate_results([(self._github(), [raw])])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].id, "owner/awesome-tool")
+        self.assertEqual(results[0].source, "github")
+        self.assertEqual(results[0].date, "2024-03-01")
+
+    def test_biorxiv_result_source_field(self):
+        raw = {"doi": "10.1234/bio.001", "title": "Preprint", "date": "2024-06-01"}
+        results = aggregate_results([(self._biorxiv(), [raw])])
+        self.assertEqual(results[0].source, "biorxiv")
+
+    def test_paperclip_result_source_field(self):
+        raw = {"doi": "10.1234/pc.001", "title": "Lit paper", "date": "2024-06-01"}
+        results = aggregate_results([(self._paperclip(), [raw])])
+        self.assertEqual(results[0].source, "paperclip")
 
 
 if __name__ == "__main__":
