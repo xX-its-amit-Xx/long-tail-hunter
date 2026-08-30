@@ -776,5 +776,39 @@ class TestAggregateResults(unittest.TestCase):
         self.assertEqual(results, [])
 
 
+class TestDispatchHashable(unittest.TestCase):
+    """Dispatch must be usable as a dict key so callers can build
+    {Dispatch: [results]} mappings and pass .items() to aggregate_results."""
+
+    def _dispatch(self, source: str = "biorxiv", strategy: str = "s") -> "Dispatch":
+        from long_tail_hunter.query import Query
+        from long_tail_hunter.runner import Dispatch
+        q = Query(source=source, text="t", rationale="r", strategy=strategy)
+        return Dispatch(tool="tool", args={}, origin=[q])
+
+    def test_dispatch_is_hashable(self):
+        d = self._dispatch()
+        h = hash(d)
+        self.assertIsInstance(h, int)
+
+    def test_two_dispatches_can_be_dict_keys(self):
+        d1 = self._dispatch(strategy="s1")
+        d2 = self._dispatch(strategy="s2")
+        mapping = {d1: ["r1"], d2: ["r2"]}
+        self.assertEqual(len(mapping), 2)
+
+    def test_dict_items_round_trips_through_aggregate_results(self):
+        """Build a {Dispatch: [raw]} dict, pass .items(), verify dedup."""
+        d1 = self._dispatch("biorxiv", "recent_preprints")
+        d2 = self._dispatch("paperclip", "negative_space")
+        doi = "10.1101/2025.09.01.000001"
+        raw = {"doi": doi, "title": "Niche paper", "abstract_preview": ""}
+        mapping = {d1: [raw], d2: [raw]}
+        results = aggregate_results(mapping.items())
+        self.assertEqual(len(results), 1)
+        self.assertIn("recent_preprints", results[0].strategies_matched)
+        self.assertIn("negative_space", results[0].strategies_matched)
+
+
 if __name__ == "__main__":
     unittest.main()

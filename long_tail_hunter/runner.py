@@ -60,6 +60,12 @@ class Dispatch:
     client_filter: list[str] | None = None
     note: str = ""
 
+    # Mutable fields (args: dict, origin: list) suppress the auto-generated
+    # __hash__. Identity-based hashing is correct — each Dispatch object is a
+    # distinct invocation — and lets callers build {Dispatch: results} dicts,
+    # passing .items() to aggregate_results.
+    __hash__ = object.__hash__
+
     def describe(self) -> str:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
