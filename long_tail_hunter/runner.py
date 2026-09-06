@@ -14,7 +14,7 @@ Two helpers also live here:
 """
 from __future__ import annotations
 from typing import Any, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 import re
 
@@ -66,6 +66,134 @@ class Dispatch:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
         return f"{self.tool} | sources={sources} | strategies={strategies}"
+
+
+@dataclass
+class Result:
+    """Normalized, deduplicated result from any source.
+
+    ``id`` is the deduplication key:
+      - biorxiv / paperclip: bare normalized DOI (``10.x/...``)
+      - github: ``full_name`` (``owner/repo``)
+      - chembl: ChEMBL compound or target ID
+      - fallback (no DOI / id): lowercased title prefix
+    ``strategies_matched`` accumulates every strategy name that surfaced
+    this result across all dispatches, so the diversity penalty in
+    ``score_long_tailness`` reflects cross-source popularity correctly.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict[str, Any]
+    strategies_matched: set[str] = field(default_factory=set)
+
+
+def _source_from_dispatch(dispatch: Dispatch) -> str:
+    """Infer source name from a Dispatch's origin queries (most reliable)."""
+    if dispatch.origin:
+        return dispatch.origin[0].source
+    tool = dispatch.tool.lower()
+    if "biorxiv" in tool or "medrxiv" in tool:
+        return "biorxiv"
+    if "paperclip" in tool:
+        return "paperclip"
+    if "chembl" in tool:
+        return "chembl"
+    if "github" in tool:
+        return "github"
+    return "unknown"
+
+
+def _norm_result(raw: dict[str, Any], source: str) -> Result:
+    """Normalize a raw source dict into a Result."""
+    if source in ("biorxiv", "paperclip"):
+        doi_raw = str(raw.get("doi") or "")
+        doi = _norm_doi(doi_raw) if doi_raw else ""
+        valid_doi = doi if (doi and _DOI_SHAPE_RE.match(doi)) else ""
+        rid = valid_doi or (str(raw.get("title") or ""))[:80].lower().strip()
+        url = f"https://doi.org/{valid_doi}" if valid_doi else ""
+        return Result(
+            source=source,
+            id=rid,
+            title=str(raw.get("title", "")),
+            url=url,
+            date=str(raw.get("date", ""))[:10],
+            abstract_preview=str(raw.get("abstract_preview", "")),
+            raw=raw,
+        )
+    if source == "github":
+        full_name = str(raw.get("full_name") or raw.get("name") or "")
+        return Result(
+            source=source,
+            id=full_name,
+            title=str(raw.get("name") or raw.get("title", "")),
+            url=str(raw.get("html_url", "")),
+            date=str(raw.get("updated_at", ""))[:10],
+            abstract_preview=str(raw.get("description", "")),
+            raw=raw,
+        )
+    # chembl and unrecognised sources
+    chembl_id = str(
+        raw.get("molecule_chembl_id")
+        or raw.get("target_chembl_id")
+        or raw.get("chembl_id")
+        or ""
+    )
+    rid = chembl_id or str(raw.get("pref_name") or raw.get("name", ""))[:80].lower().strip()
+    url = (
+        f"https://www.ebi.ac.uk/chembl/compound_report_card/{chembl_id}/"
+        if chembl_id else ""
+    )
+    return Result(
+        source=source,
+        id=rid,
+        title=str(raw.get("pref_name") or raw.get("name", "")),
+        url=url,
+        date="",
+        abstract_preview="",
+        raw=raw,
+    )
+
+
+def aggregate_results(
+    raw_by_dispatch: Iterable[tuple[Dispatch, list[dict[str, Any]]]],
+) -> list[Result]:
+    """Aggregate and deduplicate raw results from multiple dispatches.
+
+    ``raw_by_dispatch`` is an iterable of ``(Dispatch, list[dict])`` pairs —
+    e.g. the result of zipping a dispatch list with its parallel responses.
+
+    * Normalizes each raw dict into a ``Result`` using source-specific field
+      mapping (DOI → id for biomed; full_name for GitHub; ChEMBL ID otherwise).
+    * Deduplicates by ``id``; the first occurrence wins metadata, subsequent
+      duplicates only add their strategies to ``strategies_matched``.
+    * Results with no usable id are kept but cannot be deduplicated.
+    """
+    merged: dict[str, Result] = {}
+    no_id_counter = 0
+
+    for dispatch, raws in raw_by_dispatch:
+        source = _source_from_dispatch(dispatch)
+        strategies: set[str] = {q.strategy for q in dispatch.origin}
+
+        for raw in raws:
+            r = _norm_result(raw, source)
+            r.strategies_matched = strategies.copy()
+
+            if not r.id:
+                no_id_counter += 1
+                merged[f"__no_id_{no_id_counter}"] = r
+                continue
+
+            if r.id in merged:
+                merged[r.id].strategies_matched |= strategies
+            else:
+                merged[r.id] = r
+
+    return list(merged.values())
 
 
 def build_dispatches(plan: SearchPlan) -> list[Dispatch]:
@@ -288,89 +416,6 @@ def score_long_tailness(
     if final > 1.0:
         return 1.0
     return final
-
-
-@dataclass
-class Result:
-    """Normalized result from any source, suitable for cross-source dedup.
-
-    `id` is the canonical dedup key: a bare normalized DOI for biomed sources,
-    `full_name` for GitHub repos, a ChEMBL id for ChEMBL results, or a
-    lowercased title as a last resort.
-    `strategies_matched` accumulates every strategy name that returned this
-    result — used by `score_long_tailness` as the diversity penalty input.
-    """
-    source: str
-    id: str
-    title: str
-    url: str
-    date: str
-    abstract_preview: str
-    raw: dict
-    strategies_matched: set  # set[str]
-
-
-def _extract_result_id(source: str, raw: dict[str, Any]) -> str:
-    """Derive the canonical dedup key from a raw result dict."""
-    doi = _norm_doi(str(raw.get("doi") or ""))
-    if doi and _DOI_SHAPE_RE.match(doi):
-        return doi
-    if source == "github":
-        return str(raw.get("full_name") or raw.get("name") or "")
-    for field in ("molecule_chembl_id", "target_chembl_id", "chembl_id"):
-        v = raw.get(field)
-        if v:
-            return str(v)
-    return str(raw.get("title") or "").lower().strip()
-
-
-def _extract_result_url(source: str, raw: dict[str, Any]) -> str:
-    """Best-effort URL extraction from a raw result dict."""
-    for field_name in ("url", "html_url", "biorxiv_url"):
-        v = raw.get(field_name)
-        if v:
-            return str(v)
-    doi = _norm_doi(str(raw.get("doi") or ""))
-    if doi and _DOI_SHAPE_RE.match(doi):
-        return f"https://doi.org/{doi}"
-    return ""
-
-
-def aggregate_results(raw_by_dispatch: dict[Any, list[dict[str, Any]]]) -> list[Result]:
-    """Aggregate and deduplicate raw results from multiple dispatches.
-
-    Takes {Dispatch: list[dict]} and returns list[Result] deduplicated by
-    normalized id (DOI preferred). When the same id appears from multiple
-    dispatches, the Result entries are merged and `strategies_matched`
-    accumulates all strategy names.
-    """
-    merged: dict[str, Result] = {}
-
-    for dispatch, results in raw_by_dispatch.items():
-        source_strategies = {q.strategy for q in dispatch.origin}
-        source = dispatch.origin[0].source if dispatch.origin else "unknown"
-
-        for raw in results:
-            rid = _extract_result_id(source, raw)
-            if not rid:
-                continue
-            if rid in merged:
-                merged[rid].strategies_matched.update(source_strategies)
-            else:
-                merged[rid] = Result(
-                    source=source,
-                    id=rid,
-                    title=str(raw.get("title") or ""),
-                    url=_extract_result_url(source, raw),
-                    date=str(raw.get("date") or ""),
-                    abstract_preview=str(
-                        raw.get("abstract_preview") or raw.get("description") or ""
-                    ),
-                    raw=raw,
-                    strategies_matched=set(source_strategies),
-                )
-
-    return list(merged.values())
 
 
 def summarise_dispatches(dispatches: list[Dispatch]) -> dict[str, Any]:
