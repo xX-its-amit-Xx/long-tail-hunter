@@ -58,6 +58,10 @@ class Dispatch:
     client_filter: list[str] | None = None
     note: str = ""
 
+    # Restore identity-based hashing so Dispatch can be used as a dict key
+    # (the dataclass eq=True default sets __hash__=None making it unhashable).
+    __hash__ = object.__hash__
+
     def describe(self) -> str:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
@@ -284,6 +288,89 @@ def score_long_tailness(
     if final > 1.0:
         return 1.0
     return final
+
+
+@dataclass
+class Result:
+    """Normalized result from any source, suitable for cross-source dedup.
+
+    `id` is the canonical dedup key: a bare normalized DOI for biomed sources,
+    `full_name` for GitHub repos, a ChEMBL id for ChEMBL results, or a
+    lowercased title as a last resort.
+    `strategies_matched` accumulates every strategy name that returned this
+    result — used by `score_long_tailness` as the diversity penalty input.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict
+    strategies_matched: set  # set[str]
+
+
+def _extract_result_id(source: str, raw: dict[str, Any]) -> str:
+    """Derive the canonical dedup key from a raw result dict."""
+    doi = _norm_doi(str(raw.get("doi") or ""))
+    if doi and _DOI_SHAPE_RE.match(doi):
+        return doi
+    if source == "github":
+        return str(raw.get("full_name") or raw.get("name") or "")
+    for field in ("molecule_chembl_id", "target_chembl_id", "chembl_id"):
+        v = raw.get(field)
+        if v:
+            return str(v)
+    return str(raw.get("title") or "").lower().strip()
+
+
+def _extract_result_url(source: str, raw: dict[str, Any]) -> str:
+    """Best-effort URL extraction from a raw result dict."""
+    for field_name in ("url", "html_url", "biorxiv_url"):
+        v = raw.get(field_name)
+        if v:
+            return str(v)
+    doi = _norm_doi(str(raw.get("doi") or ""))
+    if doi and _DOI_SHAPE_RE.match(doi):
+        return f"https://doi.org/{doi}"
+    return ""
+
+
+def aggregate_results(raw_by_dispatch: dict[Any, list[dict[str, Any]]]) -> list[Result]:
+    """Aggregate and deduplicate raw results from multiple dispatches.
+
+    Takes {Dispatch: list[dict]} and returns list[Result] deduplicated by
+    normalized id (DOI preferred). When the same id appears from multiple
+    dispatches, the Result entries are merged and `strategies_matched`
+    accumulates all strategy names.
+    """
+    merged: dict[str, Result] = {}
+
+    for dispatch, results in raw_by_dispatch.items():
+        source_strategies = {q.strategy for q in dispatch.origin}
+        source = dispatch.origin[0].source if dispatch.origin else "unknown"
+
+        for raw in results:
+            rid = _extract_result_id(source, raw)
+            if not rid:
+                continue
+            if rid in merged:
+                merged[rid].strategies_matched.update(source_strategies)
+            else:
+                merged[rid] = Result(
+                    source=source,
+                    id=rid,
+                    title=str(raw.get("title") or ""),
+                    url=_extract_result_url(source, raw),
+                    date=str(raw.get("date") or ""),
+                    abstract_preview=str(
+                        raw.get("abstract_preview") or raw.get("description") or ""
+                    ),
+                    raw=raw,
+                    strategies_matched=set(source_strategies),
+                )
+
+    return list(merged.values())
 
 
 def summarise_dispatches(dispatches: list[Dispatch]) -> dict[str, Any]:
