@@ -96,6 +96,8 @@ maximize ranking AUC on this corpus.
 
 ## Shipped
 
+- 2026-07-26: Cross-source result aggregator + dedupe (`runner.Result` dataclass, `runner.aggregate_results`, `_norm_result`, `_source_from_dispatch`; 13 new tests)
+
 ### 2026-05-31
 
 - `famous_hits` suppression filter — `runner.filter_results`,
