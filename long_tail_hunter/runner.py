@@ -161,6 +161,17 @@ def aggregate_results(
             if id_str in by_id:
                 by_id[id_str].strategies_matched.update(dispatch_strategies)
             else:
+                # GitHub uses updated_at (ISO 8601) for date and description
+                # for the human-readable summary — map to our normalised fields.
+                if source == "github":
+                    dt_raw = str(raw.get("updated_at") or raw.get("pushed_at") or "")
+                    norm_date = dt_raw[:10] if len(dt_raw) >= 10 else dt_raw
+                    norm_abstract = str(raw.get("description") or "")
+                else:
+                    norm_date = str(raw.get("date") or raw.get("date_revised") or "")
+                    norm_abstract = str(
+                        raw.get("abstract_preview") or raw.get("abstract") or ""
+                    )
                 by_id[id_str] = Result(
                     source=source,
                     id=id_str,
@@ -169,10 +180,8 @@ def aggregate_results(
                         or raw.get("name") or ""
                     ),
                     url=_extract_url(raw, source, id_str),
-                    date=str(raw.get("date") or raw.get("date_revised") or ""),
-                    abstract_preview=str(
-                        raw.get("abstract_preview") or raw.get("abstract") or ""
-                    ),
+                    date=norm_date,
+                    abstract_preview=norm_abstract,
                     raw=raw,
                     strategies_matched=set(dispatch_strategies),
                 )

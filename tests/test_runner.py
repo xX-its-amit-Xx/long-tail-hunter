@@ -775,6 +775,44 @@ class TestAggregateResults(unittest.TestCase):
         results = aggregate_results([(d, [raw])])
         self.assertEqual(results, [])
 
+    def test_chembl_id_uses_molecule_chembl_id(self):
+        d = self._dispatch("chembl", "chemistry_side")
+        raw = {"molecule_chembl_id": "CHEMBL12345", "pref_name": "Compound X"}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].id, "CHEMBL12345")
+
+    def test_chembl_id_falls_back_to_target_chembl_id(self):
+        d = self._dispatch("chembl", "chemistry_side")
+        raw = {"target_chembl_id": "CHEMBL_TGT_999", "pref_name": "Target Y"}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].id, "CHEMBL_TGT_999")
+
+    def test_github_date_truncated_to_iso_date(self):
+        d = self._dispatch("github", "software_niche")
+        raw = {"full_name": "org/tool", "updated_at": "2025-03-15T12:00:00Z"}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(results[0].date, "2025-03-15")
+
+    def test_github_abstract_preview_is_description(self):
+        d = self._dispatch("github", "software_niche")
+        raw = {"full_name": "org/tool", "description": "A neat library"}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(results[0].abstract_preview, "A neat library")
+
+    def test_result_raw_field_is_original_dict(self):
+        d = self._dispatch("biorxiv", "recent_preprints")
+        raw = {"doi": "10.1101/2024.09.01.555555", "title": "Raw check", "extra": 42}
+        results = aggregate_results([(d, [raw])])
+        self.assertIs(results[0].raw, raw)
+
+    def test_result_source_field_matches_dispatch_source(self):
+        d = self._dispatch("github", "software_niche")
+        raw = {"full_name": "org/tool", "name": "tool"}
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(results[0].source, "github")
+
 
 class TestDispatchHashable(unittest.TestCase):
     """Dispatch must be usable as a dict key so callers can build
