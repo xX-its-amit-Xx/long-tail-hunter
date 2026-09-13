@@ -3,27 +3,6 @@
 A scheduled remote agent picks one of these each week. Each item names a
 single coherent change with clear acceptance criteria.
 
-## 1. Cross-source result aggregator + dedupe
-
-Each source returns results in its own shape (bioRxiv has `doi`/`title`/
-`abstract_preview`; paperclip returns excerpts; GitHub returns repo metadata;
-ChEMBL returns target rows). The runner currently has no notion of a
-unified result object, so downstream ranking and the new
-`score_long_tailness` heuristic only work per-source.
-
-**Acceptance:**
-- New `runner.Result` dataclass with normalized fields: `source`, `id` (DOI
-  if biomed, repo full_name for GitHub, ChEMBL ID otherwise), `title`,
-  `url`, `date`, `abstract_preview`, `raw` (the original dict),
-  `strategies_matched: set[str]`.
-- New `runner.aggregate_results(raw_by_dispatch)` taking
-  `{Dispatch: list[dict]}` and returning `list[Result]` deduplicated by
-  normalized id (DOI preferred). Multi-source hits accumulate
-  `strategies_matched`.
-- Unit tests showing: (a) duplicate DOI across sources collapses to one
-  Result, (b) `strategies_matched` contains both strategy names, (c)
-  `score_long_tailness` consumed the diversity penalty correctly.
-
 ## 2. OpenAlex source adapter
 
 OpenAlex (`api.openalex.org`) has a rich free-text search API (unlike
@@ -95,6 +74,10 @@ maximize ranking AUC on this corpus.
 - Full integration test against live MCP servers (flaky; need fixtures).
 
 ## Shipped
+
+### 2026-06-14
+
+- 2026-06-14: Cross-source result aggregator + dedupe (`runner.Result` dataclass, `runner.aggregate_results`)
 
 ### 2026-05-31
 
