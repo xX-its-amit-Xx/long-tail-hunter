@@ -94,7 +94,11 @@ maximize ranking AUC on this corpus.
 - Direct LLM-rerank of results (needs design discussion, model picking).
 - Full integration test against live MCP servers (flaky; need fixtures).
 
-## Shipped
+## Shipped (current batch)
+
+- 2026-09-20: Cross-source result aggregator + dedupe (`runner.Result`, `runner.aggregate_results`)
+
+## Shipped (prior batch)
 
 ### 2026-05-31
 

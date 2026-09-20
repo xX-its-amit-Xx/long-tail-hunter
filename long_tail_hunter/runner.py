@@ -14,7 +14,7 @@ Two helpers also live here:
 """
 from __future__ import annotations
 from typing import Any, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 import re
 
@@ -57,6 +57,14 @@ class Dispatch:
     origin: list[Query]
     client_filter: list[str] | None = None
     note: str = ""
+
+    # Identity-based hash so Dispatch objects can serve as dict keys even
+    # though they contain mutable fields (args, origin).
+    def __hash__(self) -> int:
+        return id(self)
+
+    def __eq__(self, other: object) -> bool:
+        return self is other
 
     def describe(self) -> str:
         sources = ", ".join(q.source for q in self.origin)
@@ -284,6 +292,114 @@ def score_long_tailness(
     if final > 1.0:
         return 1.0
     return final
+
+
+@dataclass
+class Result:
+    """Normalized result from any source, ready for ranking and dedup.
+
+    Fields
+    ------
+    source          : originating source name (e.g. 'biorxiv', 'github')
+    id              : normalized identifier — prefixed by type:
+                      'doi:<bare_doi>' | 'github:<full_name>' |
+                      'chembl:<id>' | 'title:<lower>' | 'raw:<obj_id>'
+    title           : result title (or repo name for GitHub)
+    url             : canonical URL, '' if unavailable
+    date            : YYYY-MM-DD string, '' if unknown
+    abstract_preview: first ~250 chars of abstract / description
+    raw             : original dict from the source, unmodified
+    strategies_matched: names of every strategy whose query returned this result
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict
+    strategies_matched: set = field(default_factory=set)
+
+
+def _extract_result_id(raw: dict[str, Any], source: str) -> str:
+    """Return a stable, normalized identifier string for dedup purposes."""
+    doi = raw.get("doi") or ""
+    if doi:
+        normed = _norm_doi(str(doi))
+        if _looks_like_doi(normed):
+            return "doi:" + normed
+    if source == "github":
+        name = raw.get("full_name") or raw.get("name") or ""
+        if name:
+            return "github:" + str(name).lower()
+    chembl_id = (
+        raw.get("molecule_chembl_id") or raw.get("target_chembl_id")
+        or raw.get("chembl_id") or ""
+    )
+    if chembl_id:
+        return "chembl:" + str(chembl_id).lower()
+    title = str(raw.get("title") or raw.get("name") or "").lower().strip()
+    if title:
+        return "title:" + title
+    return "raw:" + str(id(raw))
+
+
+def _extract_url(raw: dict[str, Any], source: str) -> str:
+    """Best-effort canonical URL extraction."""
+    if source == "github":
+        return str(raw.get("html_url") or raw.get("url") or "")
+    doi = raw.get("doi") or ""
+    if doi:
+        normed = _norm_doi(str(doi))
+        if _looks_like_doi(normed):
+            return "https://doi.org/" + normed
+    return str(raw.get("url") or raw.get("link") or "")
+
+
+def _extract_date(raw: dict[str, Any], source: str) -> str:
+    """Return a YYYY-MM-DD string, or '' if none is present."""
+    date_val = str(raw.get("date") or "")
+    if date_val:
+        return date_val[:10]
+    if source == "github":
+        created = str(raw.get("created_at") or "")
+        if created:
+            return created[:10]
+    return ""
+
+
+def aggregate_results(
+    raw_by_dispatch: dict[Dispatch, list[dict[str, Any]]],
+) -> list[Result]:
+    """Merge per-dispatch result lists into a deduplicated list of Results.
+
+    Results sharing a normalized id (DOI preferred) are collapsed into one
+    Result; their `strategies_matched` sets are unioned so a result found by
+    two strategies correctly accumulates both strategy names.
+
+    The diversity penalty in `score_long_tailness` is fed directly from
+    `result.strategies_matched`.
+    """
+    seen: dict[str, Result] = {}
+    for dispatch, raw_results in raw_by_dispatch.items():
+        strategy_names = {q.strategy for q in dispatch.origin}
+        source = dispatch.origin[0].source if dispatch.origin else "unknown"
+        for raw in raw_results:
+            result_id = _extract_result_id(raw, source)
+            if result_id in seen:
+                seen[result_id].strategies_matched.update(strategy_names)
+            else:
+                seen[result_id] = Result(
+                    source=source,
+                    id=result_id,
+                    title=str(raw.get("title") or raw.get("name") or ""),
+                    url=_extract_url(raw, source),
+                    date=_extract_date(raw, source),
+                    abstract_preview=str(raw.get("abstract_preview") or ""),
+                    raw=raw,
+                    strategies_matched=set(strategy_names),
+                )
+    return list(seen.values())
 
 
 def summarise_dispatches(dispatches: list[Dispatch]) -> dict[str, Any]:
