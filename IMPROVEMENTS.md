@@ -98,7 +98,7 @@ maximize ranking AUC on this corpus.
 
 ### 2026-10-04
 
-- Cross-source result aggregator + dedupe (`runner.Result`, `runner.aggregate_results`)
+- Cross-source result aggregator + dedupe (`runner.Result` dataclass, `runner.aggregate_results`, `_norm_result`, `_source_from_dispatch`; 14 new tests)
 
 ### 2026-05-31
 

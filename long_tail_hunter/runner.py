@@ -58,6 +58,10 @@ class Dispatch:
     client_filter: list[str] | None = None
     note: str = ""
 
+    # Restore identity-based hashing so Dispatch can be used as a dict key
+    # (the dataclass eq=True default sets __hash__=None making it unhashable).
+    __hash__ = object.__hash__
+
     def describe(self) -> str:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
@@ -66,11 +70,16 @@ class Dispatch:
 
 @dataclass
 class Result:
-    """A normalized, source-agnostic result from any adapter.
+    """Normalized, deduplicated result from any source.
 
-    ``id`` is a stable dedup key: bare DOI for biomed sources, ``owner/repo``
-    for GitHub, uppercase ChEMBL ID for chemistry.  DOI URL variants
-    (``https://doi.org/10.…``) normalize to the same bare-DOI id.
+    ``id`` is the deduplication key:
+      - biorxiv / paperclip: bare normalized DOI (``10.x/...``)
+      - github: ``full_name`` (``owner/repo``)
+      - chembl: ChEMBL compound or target ID
+      - fallback (no DOI / id): lowercased title prefix
+    ``strategies_matched`` accumulates every strategy name that surfaced
+    this result across all dispatches, so the diversity penalty in
+    ``score_long_tailness`` reflects cross-source popularity correctly.
     """
     source: str
     id: str
@@ -78,90 +87,113 @@ class Result:
     url: str
     date: str
     abstract_preview: str
-    raw: dict
-    strategies_matched: set = field(default_factory=set)
+    raw: dict[str, Any]
+    strategies_matched: set[str] = field(default_factory=set)
 
 
-_CHEMBL_ID_KEYS = ("molecule_chembl_id", "target_chembl_id", "chembl_id")
+def _source_from_dispatch(dispatch: Dispatch) -> str:
+    """Infer source name from a Dispatch's origin queries (most reliable)."""
+    if dispatch.origin:
+        return dispatch.origin[0].source
+    tool = dispatch.tool.lower()
+    if "biorxiv" in tool or "medrxiv" in tool:
+        return "biorxiv"
+    if "paperclip" in tool:
+        return "paperclip"
+    if "chembl" in tool:
+        return "chembl"
+    if "github" in tool:
+        return "github"
+    return "unknown"
 
 
-def _extract_result_id(source: str, raw: dict[str, Any]) -> str:
-    """Return a stable dedup key for *raw*, or '' if none can be derived."""
-    raw_doi = str(raw.get("doi") or "")
-    if raw_doi and _looks_like_doi(raw_doi):
-        return _norm_doi(raw_doi)
+def _norm_result(raw: dict[str, Any], source: str) -> Result:
+    """Normalize a raw source dict into a Result."""
+    if source in ("biorxiv", "paperclip"):
+        doi_raw = str(raw.get("doi") or "")
+        doi = _norm_doi(doi_raw) if doi_raw else ""
+        valid_doi = doi if (doi and _DOI_SHAPE_RE.match(doi)) else ""
+        rid = valid_doi or (str(raw.get("title") or ""))[:80].lower().strip()
+        url = f"https://doi.org/{valid_doi}" if valid_doi else ""
+        return Result(
+            source=source,
+            id=rid,
+            title=str(raw.get("title", "")),
+            url=url,
+            date=str(raw.get("date", ""))[:10],
+            abstract_preview=str(raw.get("abstract_preview", "")),
+            raw=raw,
+        )
     if source == "github":
-        return str(raw.get("full_name") or raw.get("name") or "")
-    if source == "chembl":
-        for key in _CHEMBL_ID_KEYS:
-            val = raw.get(key)
-            if val:
-                return str(val).upper()
-    # Fallback: title-derived (lowercase stripped) so callers can still
-    # deduplicate results whose DOI field is missing.
-    title = str(raw.get("title") or raw.get("pref_name") or raw.get("name") or "")
-    return title.lower().strip()
-
-
-def _normalize_result(
-    source: str,
-    raw: dict[str, Any],
-    strategies: set,
-) -> "Result | None":
-    result_id = _extract_result_id(source, raw)
-    if not result_id:
-        return None
-    title = str(raw.get("title") or raw.get("pref_name") or raw.get("name") or "")
-    doi_id = result_id if _looks_like_doi(result_id) else ""
-    url = str(
-        raw.get("url") or raw.get("html_url") or
-        (f"https://doi.org/{doi_id}" if doi_id else "") or ""
+        full_name = str(raw.get("full_name") or raw.get("name") or "")
+        return Result(
+            source=source,
+            id=full_name,
+            title=str(raw.get("name") or raw.get("title", "")),
+            url=str(raw.get("html_url", "")),
+            date=str(raw.get("updated_at", ""))[:10],
+            abstract_preview=str(raw.get("description", "")),
+            raw=raw,
+        )
+    # chembl and unrecognised sources
+    chembl_id = str(
+        raw.get("molecule_chembl_id")
+        or raw.get("target_chembl_id")
+        or raw.get("chembl_id")
+        or ""
     )
-    raw_date = str(
-        raw.get("date") or raw.get("published") or raw.get("created_at") or ""
-    )
-    abstract_preview = str(
-        raw.get("abstract_preview") or raw.get("abstract") or
-        raw.get("description") or raw.get("excerpt") or ""
+    rid = chembl_id or str(raw.get("pref_name") or raw.get("name", ""))[:80].lower().strip()
+    url = (
+        f"https://www.ebi.ac.uk/chembl/compound_report_card/{chembl_id}/"
+        if chembl_id else ""
     )
     return Result(
         source=source,
-        id=result_id,
-        title=title,
+        id=rid,
+        title=str(raw.get("pref_name") or raw.get("name", "")),
         url=url,
-        date=raw_date[:10] if raw_date else "",
-        abstract_preview=abstract_preview,
-        raw=dict(raw),
-        strategies_matched=set(strategies),
+        date="",
+        abstract_preview="",
+        raw=raw,
     )
 
 
 def aggregate_results(
-    raw_by_dispatch: "list[tuple[Dispatch, list[dict[str, Any]]]]",
+    raw_by_dispatch: Iterable[tuple[Dispatch, list[dict[str, Any]]]],
 ) -> list[Result]:
-    """Aggregate per-dispatch raw results into a deduplicated list of Results.
+    """Aggregate and deduplicate raw results from multiple dispatches.
 
-    Takes an iterable of (Dispatch, raw_results) pairs — the same shape as
-    ``list(some_dict.items())``.  Results sharing the same normalized id are
-    merged: ``strategies_matched`` from all matching dispatches accumulates.
+    ``raw_by_dispatch`` is an iterable of ``(Dispatch, list[dict])`` pairs —
+    e.g. the result of zipping a dispatch list with its parallel responses.
 
-    DOI-keyed biomed results deduplicate across sources (e.g. a paper returned
-    by both bioRxiv and Paperclip becomes one Result with both strategy names
-    in ``strategies_matched``).
+    * Normalizes each raw dict into a ``Result`` using source-specific field
+      mapping (DOI → id for biomed; full_name for GitHub; ChEMBL ID otherwise).
+    * Deduplicates by ``id``; the first occurrence wins metadata, subsequent
+      duplicates only add their strategies to ``strategies_matched``.
+    * Results with no usable id are kept but cannot be deduplicated.
     """
-    seen: dict[str, Result] = {}
+    merged: dict[str, Result] = {}
+    no_id_counter = 0
+
     for dispatch, raws in raw_by_dispatch:
-        source = dispatch.origin[0].source if dispatch.origin else "unknown"
-        strategies = {q.strategy for q in dispatch.origin}
+        source = _source_from_dispatch(dispatch)
+        strategies: set[str] = {q.strategy for q in dispatch.origin}
+
         for raw in raws:
-            r = _normalize_result(source, raw, strategies)
-            if r is None:
+            r = _norm_result(raw, source)
+            r.strategies_matched = strategies.copy()
+
+            if not r.id:
+                no_id_counter += 1
+                merged[f"__no_id_{no_id_counter}"] = r
                 continue
-            if r.id in seen:
-                seen[r.id].strategies_matched |= r.strategies_matched
+
+            if r.id in merged:
+                merged[r.id].strategies_matched |= strategies
             else:
-                seen[r.id] = r
-    return list(seen.values())
+                merged[r.id] = r
+
+    return list(merged.values())
 
 
 def build_dispatches(plan: SearchPlan) -> list[Dispatch]:
