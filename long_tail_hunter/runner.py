@@ -14,7 +14,7 @@ Two helpers also live here:
 """
 from __future__ import annotations
 from typing import Any, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 import re
 
@@ -62,6 +62,106 @@ class Dispatch:
         sources = ", ".join(q.source for q in self.origin)
         strategies = ", ".join(sorted({q.strategy for q in self.origin}))
         return f"{self.tool} | sources={sources} | strategies={strategies}"
+
+
+@dataclass
+class Result:
+    """A normalized, source-agnostic result from any adapter.
+
+    ``id`` is a stable dedup key: bare DOI for biomed sources, ``owner/repo``
+    for GitHub, uppercase ChEMBL ID for chemistry.  DOI URL variants
+    (``https://doi.org/10.…``) normalize to the same bare-DOI id.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict
+    strategies_matched: set = field(default_factory=set)
+
+
+_CHEMBL_ID_KEYS = ("molecule_chembl_id", "target_chembl_id", "chembl_id")
+
+
+def _extract_result_id(source: str, raw: dict[str, Any]) -> str:
+    """Return a stable dedup key for *raw*, or '' if none can be derived."""
+    raw_doi = str(raw.get("doi") or "")
+    if raw_doi and _looks_like_doi(raw_doi):
+        return _norm_doi(raw_doi)
+    if source == "github":
+        return str(raw.get("full_name") or raw.get("name") or "")
+    if source == "chembl":
+        for key in _CHEMBL_ID_KEYS:
+            val = raw.get(key)
+            if val:
+                return str(val).upper()
+    # Fallback: title-derived (lowercase stripped) so callers can still
+    # deduplicate results whose DOI field is missing.
+    title = str(raw.get("title") or raw.get("pref_name") or raw.get("name") or "")
+    return title.lower().strip()
+
+
+def _normalize_result(
+    source: str,
+    raw: dict[str, Any],
+    strategies: set,
+) -> "Result | None":
+    result_id = _extract_result_id(source, raw)
+    if not result_id:
+        return None
+    title = str(raw.get("title") or raw.get("pref_name") or raw.get("name") or "")
+    doi_id = result_id if _looks_like_doi(result_id) else ""
+    url = str(
+        raw.get("url") or raw.get("html_url") or
+        (f"https://doi.org/{doi_id}" if doi_id else "") or ""
+    )
+    raw_date = str(
+        raw.get("date") or raw.get("published") or raw.get("created_at") or ""
+    )
+    abstract_preview = str(
+        raw.get("abstract_preview") or raw.get("abstract") or
+        raw.get("description") or raw.get("excerpt") or ""
+    )
+    return Result(
+        source=source,
+        id=result_id,
+        title=title,
+        url=url,
+        date=raw_date[:10] if raw_date else "",
+        abstract_preview=abstract_preview,
+        raw=dict(raw),
+        strategies_matched=set(strategies),
+    )
+
+
+def aggregate_results(
+    raw_by_dispatch: "list[tuple[Dispatch, list[dict[str, Any]]]]",
+) -> list[Result]:
+    """Aggregate per-dispatch raw results into a deduplicated list of Results.
+
+    Takes an iterable of (Dispatch, raw_results) pairs — the same shape as
+    ``list(some_dict.items())``.  Results sharing the same normalized id are
+    merged: ``strategies_matched`` from all matching dispatches accumulates.
+
+    DOI-keyed biomed results deduplicate across sources (e.g. a paper returned
+    by both bioRxiv and Paperclip becomes one Result with both strategy names
+    in ``strategies_matched``).
+    """
+    seen: dict[str, Result] = {}
+    for dispatch, raws in raw_by_dispatch:
+        source = dispatch.origin[0].source if dispatch.origin else "unknown"
+        strategies = {q.strategy for q in dispatch.origin}
+        for raw in raws:
+            r = _normalize_result(source, raw, strategies)
+            if r is None:
+                continue
+            if r.id in seen:
+                seen[r.id].strategies_matched |= r.strategies_matched
+            else:
+                seen[r.id] = r
+    return list(seen.values())
 
 
 def build_dispatches(plan: SearchPlan) -> list[Dispatch]:
