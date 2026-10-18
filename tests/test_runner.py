@@ -7,6 +7,7 @@ from long_tail_hunter.hunter import plan
 from long_tail_hunter.runner import (
     build_dispatches, filter_biorxiv_results, filter_paperclip_results,
     filter_results, score_long_tailness, summarise_dispatches,
+    Result, aggregate_results,
 )
 from long_tail_hunter.categories import categories_for, BIORXIV_CATEGORIES
 
@@ -619,6 +620,162 @@ class TestScoreLongTailnessRegressions(unittest.TestCase):
         # And bounded to [0, 1] regardless.
         self.assertGreaterEqual(score_neg, 0.0)
         self.assertLessEqual(score_neg, 1.0)
+
+
+class TestResultAggregator(unittest.TestCase):
+    """Tests for Result dataclass and aggregate_results()."""
+
+    def _dispatch(self, source: str, strategy: str) -> "Dispatch":
+        from long_tail_hunter.query import Query
+        from long_tail_hunter.runner import Dispatch
+        q = Query(source=source, text="q", rationale="r", strategy=strategy)
+        return Dispatch(tool="some_tool", args={}, origin=[q])
+
+    # --- (a) Duplicate DOI across two sources collapses to one Result ------
+
+    def test_duplicate_doi_collapses(self):
+        biorxiv_raw = {"doi": "10.1234/foo", "title": "Long-tail paper",
+                       "abstract_preview": "interesting", "date": "2025-01-01"}
+        paperclip_raw = {"doi": "10.1234/foo", "title": "Long-tail paper",
+                         "abstract_preview": "interesting excerpt",
+                         "date": "2025-01-01"}
+        d1 = self._dispatch("biorxiv", "recent_preprints")
+        d2 = self._dispatch("paperclip", "deep_textbook_hunt")
+        results = aggregate_results([(d1, [biorxiv_raw]), (d2, [paperclip_raw])])
+        self.assertEqual(len(results), 1,
+                         "Duplicate DOI across sources should collapse to one Result")
+
+    def test_duplicate_doi_url_form_collapses(self):
+        """DOI in URL form from one source dedupes against bare DOI from another."""
+        r1 = {"doi": "https://doi.org/10.1234/bar", "title": "P1"}
+        r2 = {"doi": "10.1234/bar", "title": "P1 copy"}
+        d1 = self._dispatch("biorxiv", "s1")
+        d2 = self._dispatch("paperclip", "s2")
+        results = aggregate_results([(d1, [r1]), (d2, [r2])])
+        self.assertEqual(len(results), 1)
+
+    def test_different_dois_stay_separate(self):
+        r1 = {"doi": "10.1234/aaa", "title": "A"}
+        r2 = {"doi": "10.1234/bbb", "title": "B"}
+        d1 = self._dispatch("biorxiv", "s1")
+        d2 = self._dispatch("biorxiv", "s2")
+        results = aggregate_results([(d1, [r1]), (d2, [r2])])
+        self.assertEqual(len(results), 2)
+
+    # --- (b) strategies_matched accumulates both strategy names -----------
+
+    def test_strategies_matched_union_on_merge(self):
+        doi = "10.5678/merge-me"
+        r1 = {"doi": doi, "title": "X"}
+        r2 = {"doi": doi, "title": "X"}
+        d1 = self._dispatch("biorxiv", "recent_preprints")
+        d2 = self._dispatch("paperclip", "deep_textbook_hunt")
+        results = aggregate_results([(d1, [r1]), (d2, [r2])])
+        self.assertEqual(len(results), 1)
+        self.assertIn("recent_preprints", results[0].strategies_matched)
+        self.assertIn("deep_textbook_hunt", results[0].strategies_matched)
+
+    def test_single_source_strategies_matched_carries_strategy(self):
+        r = {"doi": "10.9999/solo", "title": "Solo"}
+        d = self._dispatch("biorxiv", "negative_space")
+        results = aggregate_results([(d, [r])])
+        self.assertEqual(results[0].strategies_matched, {"negative_space"})
+
+    # --- (c) score_long_tailness uses the diversity penalty correctly ------
+
+    def test_diversity_penalty_applied_via_strategies_matched(self):
+        """Merged result (many strategies) scores lower than a single-source hit."""
+        doi = "10.1111/popular"
+        raw = {"doi": doi, "title": "Popular method",
+               "abstract_preview": "", "date": "2025-06-01"}
+        # Simulate a result matched by 4 different strategies.
+        d1 = self._dispatch("biorxiv", "s1")
+        d2 = self._dispatch("biorxiv", "s2")
+        d3 = self._dispatch("paperclip", "s3")
+        d4 = self._dispatch("paperclip", "s4")
+        merged = aggregate_results(
+            [(d1, [raw]), (d2, [raw]), (d3, [raw]), (d4, [raw])]
+        )
+        self.assertEqual(len(merged), 1)
+        popular_result = merged[0]
+        self.assertEqual(len(popular_result.strategies_matched), 4)
+
+        # A niche result found by only one strategy.
+        niche_raw = {"doi": "10.2222/niche", "title": "Niche paper",
+                     "abstract_preview": "", "date": "2025-06-01"}
+        d_niche = self._dispatch("biorxiv", "edge_cases")
+        niche_results = aggregate_results([(d_niche, [niche_raw])])
+        niche_result = niche_results[0]
+        self.assertEqual(len(niche_result.strategies_matched), 1)
+
+        popular_score = score_long_tailness(
+            popular_result.raw,
+            {"strategies_matched": popular_result.strategies_matched},
+        )
+        niche_score = score_long_tailness(
+            niche_result.raw,
+            {"strategies_matched": niche_result.strategies_matched},
+        )
+        self.assertGreater(niche_score, popular_score,
+                           "Single-strategy (niche) hit should outscore 4-strategy (popular) hit")
+
+    # --- Field extraction smoke-tests ------------------------------------
+
+    def test_result_fields_biorxiv(self):
+        raw = {"doi": "10.1234/biorxiv-test", "title": "A preprint",
+               "abstract_preview": "We studied X", "date": "2025-03-15",
+               "category": "genomics"}
+        d = self._dispatch("biorxiv", "recent_preprints")
+        results = aggregate_results([(d, [raw])])
+        r = results[0]
+        self.assertEqual(r.source, "biorxiv")
+        self.assertEqual(r.id, "10.1234/biorxiv-test")
+        self.assertEqual(r.title, "A preprint")
+        self.assertEqual(r.url, "https://doi.org/10.1234/biorxiv-test")
+        self.assertEqual(r.date, "2025-03-15")
+        self.assertEqual(r.abstract_preview, "We studied X")
+        self.assertEqual(r.raw, raw)
+
+    def test_result_fields_github(self):
+        raw = {"full_name": "octocat/Hello-World", "name": "Hello-World",
+               "html_url": "https://github.com/octocat/Hello-World",
+               "description": "My first repo", "updated_at": "2025-04-01T00:00:00Z"}
+        d = self._dispatch("github", "software_repos")
+        results = aggregate_results([(d, [raw])])
+        r = results[0]
+        self.assertEqual(r.source, "github")
+        self.assertEqual(r.id, "octocat/Hello-World")
+        self.assertEqual(r.url, "https://github.com/octocat/Hello-World")
+        self.assertEqual(r.abstract_preview, "My first repo")
+
+    def test_result_fields_chembl(self):
+        raw = {"molecule_chembl_id": "CHEMBL25", "pref_name": "ASPIRIN",
+               "molecule_type": "Small molecule"}
+        d = self._dispatch("chembl", "chemistry_side")
+        results = aggregate_results([(d, [raw])])
+        r = results[0]
+        self.assertEqual(r.source, "chembl")
+        self.assertEqual(r.id, "CHEMBL25")
+        self.assertIn("CHEMBL25", r.url)
+
+    def test_no_id_results_appended_without_loss(self):
+        """Results with no stable ID are kept (not silently dropped)."""
+        raw = {"title": "Ambiguous result with no DOI or id"}
+        d = self._dispatch("paperclip", "deep_textbook_hunt")
+        results = aggregate_results([(d, [raw])])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].id, "")
+
+    def test_empty_dispatch_list_returns_empty(self):
+        self.assertEqual(aggregate_results([]), [])
+
+    def test_result_is_dataclass_with_expected_fields(self):
+        r = Result(
+            source="biorxiv", id="10.0/x", title="T", url="u",
+            date="2025-01-01", abstract_preview="a", raw={},
+        )
+        self.assertIsInstance(r.strategies_matched, set)
+        self.assertEqual(r.strategies_matched, set())
 
 
 if __name__ == "__main__":

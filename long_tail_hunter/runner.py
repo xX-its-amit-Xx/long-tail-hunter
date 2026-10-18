@@ -14,6 +14,7 @@ Two helpers also live here:
 """
 from __future__ import annotations
 from typing import Any, Iterable
+import dataclasses
 from dataclasses import dataclass
 from datetime import date
 import re
@@ -284,6 +285,110 @@ def score_long_tailness(
     if final > 1.0:
         return 1.0
     return final
+
+
+@dataclass
+class Result:
+    """Normalized, source-agnostic representation of a single search hit.
+
+    `id` is the dedupe key: bare DOI for biomed sources (biorxiv, paperclip),
+    repo ``full_name`` for GitHub, ChEMBL ID for chemistry, and an empty
+    string for results that lack any stable identifier.
+    `strategies_matched` accumulates across merges so multi-source hits carry
+    all originating strategy names — which the diversity penalty in
+    `score_long_tailness` then converts to a lower long-tail score.
+    `raw` preserves the original source dict without modification.
+    """
+    source: str
+    id: str
+    title: str
+    url: str
+    date: str
+    abstract_preview: str
+    raw: dict[str, Any]
+    strategies_matched: set[str] = dataclasses.field(default_factory=set)
+
+
+def _extract_result(dispatch: Dispatch, raw: dict[str, Any]) -> Result:
+    """Map a raw source dict + its Dispatch provenance into a Result."""
+    source = dispatch.origin[0].source if dispatch.origin else "unknown"
+    strategies = {q.strategy for q in dispatch.origin}
+
+    # --- Stable dedupe ID ------------------------------------------------
+    doi_raw = str(raw.get("doi") or "")
+    if doi_raw and _looks_like_doi(doi_raw):
+        result_id = _norm_doi(doi_raw)
+    elif source == "github":
+        result_id = str(raw.get("full_name") or raw.get("name") or "")
+    elif source == "chembl":
+        result_id = str(
+            raw.get("molecule_chembl_id")
+            or raw.get("target_chembl_id")
+            or raw.get("chembl_id")
+            or ""
+        )
+    else:
+        result_id = str(raw.get("id") or doi_raw)
+
+    # --- Human-readable fields -------------------------------------------
+    title = str(raw.get("title") or raw.get("name") or raw.get("full_name") or "")
+
+    if doi_raw and _looks_like_doi(doi_raw):
+        url = "https://doi.org/" + _norm_doi(doi_raw)
+    elif source == "github":
+        url = str(raw.get("html_url") or "")
+    elif source == "chembl" and result_id:
+        url = f"https://www.ebi.ac.uk/chembl/compound_report_card/{result_id}/"
+    else:
+        url = str(raw.get("url") or "")
+
+    date_val = str(
+        raw.get("date") or raw.get("published") or raw.get("created_at") or ""
+    )
+    abstract = str(
+        raw.get("abstract_preview") or raw.get("description") or raw.get("abstract") or ""
+    )
+
+    return Result(
+        source=source,
+        id=result_id,
+        title=title,
+        url=url,
+        date=date_val,
+        abstract_preview=abstract,
+        raw=raw,
+        strategies_matched=strategies,
+    )
+
+
+def aggregate_results(
+    raw_by_dispatch: list[tuple[Dispatch, list[dict[str, Any]]]],
+) -> list[Result]:
+    """Aggregate raw per-source results into deduplicated Result objects.
+
+    Takes a sequence of ``(Dispatch, list[raw_dict])`` pairs returned by the
+    agent after running the dispatches, and returns a flat list where items
+    with the same normalized ID are collapsed into one entry whose
+    ``strategies_matched`` accumulates all originating strategy names.
+
+    Items with no stable ID (empty string) are appended without deduplication
+    so no information is silently lost.
+    """
+    by_id: dict[str, Result] = {}
+    no_id: list[Result] = []
+
+    for dispatch, raws in raw_by_dispatch:
+        for raw in raws:
+            result = _extract_result(dispatch, raw)
+            if result.id:
+                if result.id in by_id:
+                    by_id[result.id].strategies_matched |= result.strategies_matched
+                else:
+                    by_id[result.id] = result
+            else:
+                no_id.append(result)
+
+    return list(by_id.values()) + no_id
 
 
 def summarise_dispatches(dispatches: list[Dispatch]) -> dict[str, Any]:
